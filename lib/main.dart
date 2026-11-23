@@ -452,7 +452,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
           const SizedBox(height: 30),
           Row(
-            children: const [
+            children: [
               ProfileStat(title: 'Followers', count: '0'),
               ProfileStatDivider(),
               ProfileStat(title: 'Following', count: '0'),
