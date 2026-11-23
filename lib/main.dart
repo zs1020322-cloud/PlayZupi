@@ -302,27 +302,15 @@ class HomeScreen extends StatelessWidget {
 // COMMON BOX DESIGN
 
 BoxDecoration profileBoxDecoration() {
+  // Simple white rounded box matching the supplied reference image.
   return BoxDecoration(
-    borderRadius: BorderRadius.circular(30),
-    gradient: const LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [white, Color(0xFFFDFDFD), Color(0xFFE5E5E5)],
-    ),
-    border: Border.all(
-      color: const Color(0xFFEEEEEE),
-      width: 2,
-    ),
+    color: white,
+    borderRadius: BorderRadius.circular(25),
     boxShadow: [
       BoxShadow(
-        color: black.withOpacity(0.40),
-        blurRadius: 17,
-        offset: const Offset(0, 10),
-      ),
-      BoxShadow(
-        color: white.withOpacity(0.9),
-        blurRadius: 4,
-        offset: const Offset(-2, -2),
+        color: black.withOpacity(0.16),
+        blurRadius: 9,
+        offset: const Offset(0, 5),
       ),
     ],
   );
@@ -345,103 +333,65 @@ class ProfileScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const EditProfileScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                 );
               },
-              icon: const Icon(
-                Icons.edit_rounded,
-                size: 17,
-                color: black,
-              ),
+              icon: const Icon(Icons.edit_rounded, size: 17, color: black),
               label: const Text(
                 'Edit Profile',
-                style: TextStyle(
-                  color: black,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(color: black, fontWeight: FontWeight.w800),
               ),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: gold, width: 1.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(22),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 17,
-                  vertical: 10,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 10),
               ),
             ),
           ),
-          const SizedBox(height: 18),
-
-          // DP, USERNAME AND ID
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: profileBoxDecoration(),
-            child: Row(
-              children: [
-                Container(
-                  width: 94,
-                  height: 94,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [white, grey],
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(colors: [white, grey]),
+                  border: Border.all(color: gold, width: 2.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: black.withOpacity(0.18),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
                     ),
-                    border: Border.all(color: gold, width: 2.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: black.withOpacity(0.20),
-                        blurRadius: 9,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    size: 57,
-                    color: black,
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 18),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Username',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: black,
-                          fontSize: 23,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'ID: 12345678',
-                        style: TextStyle(
-                          color: Color(0xFF777777),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                child: const Icon(Icons.person_rounded, size: 54, color: black),
+              ),
+              const SizedBox(width: 18),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Username',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: black, fontSize: 23, fontWeight: FontWeight.w900),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'ID: 12345678',
+                      style: TextStyle(color: Color(0xFF777777), fontSize: 15, fontWeight: FontWeight.w700),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-
-          const SizedBox(height: 28),
-
-          // FOUR STATISTICS
-
+          const SizedBox(height: 30),
           Row(
             children: const [
               ProfileStat(title: 'Followers', count: '0'),
@@ -454,11 +404,7 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 15),
-          Container(
-            height: 1,
-            width: double.infinity,
-            color: const Color(0xFFCCCCCC),
-          ),
+          Container(height: 1, width: double.infinity, color: const Color(0xFFCCCCCC)),
         ],
       ),
     );
@@ -554,6 +500,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     'Canada',
   ];
 
+  final Map<String, String> countryFlags = {
+    'United Arab Emirates': '🇦🇪', 'Pakistan': '🇵🇰', 'India': '🇮🇳',
+    'Saudi Arabia': '🇸🇦', 'Bangladesh': '🇧🇩', 'Afghanistan': '🇦🇫',
+    'Nepal': '🇳🇵', 'Sri Lanka': '🇱🇰', 'United Kingdom': '🇬🇧',
+    'United States': '🇺🇸', 'Qatar': '🇶🇦', 'Oman': '🇴🇲',
+    'Kuwait': '🇰🇼', 'Turkey': '🇹🇷', 'Canada': '🇨🇦',
+  };
+
   @override
   void dispose() {
     nameController.dispose();
@@ -564,7 +518,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> chooseDate() async {
     final date = await showDatePicker(
       context: context,
-      initialDate: DateTime(2005, 1, 1),
+      initialDate: selectedDate ?? DateTime(2005, 1, 1),
       firstDate: DateTime(1950),
       lastDate: DateTime.now(),
     );
@@ -664,39 +618,41 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ProfileInputBox(
                 title: 'Gender',
                 icon: Icons.wc_rounded,
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selectedGender,
-                    isExpanded: true,
-                    hint: const Text(
-                      'Select Gender',
-                      style: TextStyle(color: Color(0xFF999999)),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Male',
-                        child: Text('Male'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Female',
-                        child: Text('Female'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() => selectedGender = value);
-                    },
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(child: GenderChoice(title: 'Male', icon: Icons.male_rounded, color: const Color(0xFF2585E8), selected: selectedGender == 'Male', onTap: () => setState(() => selectedGender = 'Male'))),
+                    const SizedBox(width: 8),
+                    Expanded(child: GenderChoice(title: 'Female', icon: Icons.female_rounded, color: const Color(0xFFE85A9B), selected: selectedGender == 'Female', onTap: () => setState(() => selectedGender = 'Female'))),
+                    const SizedBox(width: 8),
+                    Expanded(child: GenderChoice(title: 'None', icon: Icons.remove_circle_outline_rounded, color: const Color(0xFF888888), selected: selectedGender == 'None', onTap: () => setState(() => selectedGender = 'None'))),
+                  ],
                 ),
               ),
 
               // DATE OF BIRTH
 
-              EditProfileOption(
-                title: selectedDate == null
-                    ? 'Date of Birth'
-                    : '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}',
+              ProfileInputBox(
+                title: 'Date of Birth',
                 icon: Icons.calendar_month_rounded,
-                onTap: chooseDate,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: DatePartChoice(
+                        title: selectedDate == null ? 'Date' : '${selectedDate!.day}/${selectedDate!.month}',
+                        icon: Icons.calendar_today_rounded,
+                        onTap: chooseDate,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: DatePartChoice(
+                        title: selectedDate == null ? 'Year' : '${selectedDate!.year}',
+                        icon: Icons.event_rounded,
+                        onTap: chooseDate,
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               // COUNTRY
@@ -715,9 +671,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     items: countries.map((country) {
                       return DropdownMenuItem(
                         value: country,
-                        child: Text(
-                          country,
-                          overflow: TextOverflow.ellipsis,
+                        child: Row(
+                          children: [
+                            Text(countryFlags[country] ?? '🌍', style: const TextStyle(fontSize: 20)),
+                            const SizedBox(width: 9),
+                            Expanded(child: Text(country, overflow: TextOverflow.ellipsis)),
+                          ],
                         ),
                       );
                     }).toList(),
@@ -781,8 +740,94 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 icon: Icons.card_giftcard_rounded,
                 onTap: () => showComingSoon('Gift Badge'),
               ),
+
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 58,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Profile details saved (demo)')),
+                    );
+                  },
+                  icon: const Icon(Icons.save_rounded, color: black),
+                  label: const Text('Save', style: TextStyle(color: black, fontSize: 18, fontWeight: FontWeight.w900)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: gold,
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  ),
+                ),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class GenderChoice extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const GenderChoice({super.key, required this.title, required this.icon, required this.color, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(13),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        decoration: BoxDecoration(
+          color: selected ? color.withOpacity(0.12) : const Color(0xFFF7F7F7),
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: selected ? color : const Color(0xFFE2E2E2), width: selected ? 1.6 : 1),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 25),
+            const SizedBox(height: 4),
+            FittedBox(child: Text(title, style: const TextStyle(color: black, fontSize: 12, fontWeight: FontWeight.w800))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DatePartChoice extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const DatePartChoice({super.key, required this.title, required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(13),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F7F7),
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: const Color(0xFFE2E2E2)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: gold, size: 19),
+            const SizedBox(width: 7),
+            Flexible(child: Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(color: black, fontWeight: FontWeight.w800))),
+          ],
         ),
       ),
     );
