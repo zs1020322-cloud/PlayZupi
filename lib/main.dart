@@ -74,10 +74,12 @@ class _MainScreenState extends State<MainScreen> {
         child: SafeArea(
           child: selectedIndex == 0
               ? const HomeScreen()
-              : OtherTabScreen(
-                  title: tabNames[selectedIndex],
-                  icon: tabIcons[selectedIndex],
-                ),
+              : selectedIndex == 5
+                  ? const ProfileScreen()
+                  : OtherTabScreen(
+                      title: tabNames[selectedIndex],
+                      icon: tabIcons[selectedIndex],
+                    ),
         ),
       ),
       bottomNavigationBar: buildBottomNavigation(),
@@ -192,12 +194,9 @@ class HomeScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(15, 13, 15, 25),
       child: Column(
         children: [
-          // HEADER: LOGO AND SETTINGS ONLY
-
           Row(
             children: [
               const Spacer(),
-
               Stack(
                 alignment: Alignment.topCenter,
                 clipBehavior: Clip.none,
@@ -244,9 +243,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-
               const Spacer(),
-
               Container(
                 width: 54,
                 height: 54,
@@ -283,48 +280,250 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
           ),
-
           const SizedBox(height: 24),
-
-          // WELCOME CARD
-
           const WelcomeCard(),
-
           const SizedBox(height: 28),
-
-          // DAILY OPTIONS
-
           const DailyOption(
             title: 'Daily Reward',
             icon: Icons.card_giftcard_rounded,
           ),
-
           const DailyOption(
             title: 'Daily Event',
             icon: Icons.calendar_month_rounded,
           ),
-
           const DailyOption(
             title: 'Daily Update',
             icon: Icons.update_rounded,
           ),
-
           const DailyOption(
             title: 'New Reward',
             icon: Icons.diamond_rounded,
           ),
-
           const DailyOption(
             title: 'Daily Task',
             icon: Icons.task_alt_rounded,
           ),
-
           const DailyOption(
             title: 'New Update',
             icon: Icons.campaign_rounded,
           ),
         ],
       ),
+    );
+  }
+}
+
+// PROFILE SCREEN
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 25),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // EDIT PROFILE
+
+          Align(
+            alignment: Alignment.topRight,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Edit Profile coming soon'),
+                  ),
+                );
+              },
+              icon: const Icon(
+                Icons.edit_rounded,
+                size: 17,
+                color: black,
+              ),
+              label: const Text(
+                'Edit Profile',
+                style: TextStyle(
+                  color: black,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: gold, width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 17,
+                  vertical: 10,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 22),
+
+          // DP, USERNAME AND ID
+
+          Row(
+            children: [
+              Container(
+                width: 94,
+                height: 94,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [white, grey],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(
+                    color: gold,
+                    width: 2.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: black.withOpacity(0.20),
+                      blurRadius: 9,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.person_rounded,
+                  size: 57,
+                  color: black,
+                ),
+              ),
+
+              const SizedBox(width: 18),
+
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Username',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: black,
+                        fontSize: 23,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'ID: 12345678',
+                      style: TextStyle(
+                        color: Color(0xFF777777),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 30),
+
+          // FOLLOWERS, FOLLOWING, VISITORS AND GIFT
+
+          Row(
+            children: const [
+              ProfileStat(
+                title: 'Followers',
+                count: '0',
+              ),
+              ProfileStatDivider(),
+              ProfileStat(
+                title: 'Following',
+                count: '0',
+              ),
+              ProfileStatDivider(),
+              ProfileStat(
+                title: 'Visitors',
+                count: '0',
+              ),
+              ProfileStatDivider(),
+              ProfileStat(
+                title: 'Gift',
+                count: '0',
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 13),
+
+          // ONE LIGHT HORIZONTAL LINE
+
+          Container(
+            height: 1,
+            width: double.infinity,
+            color: const Color(0xFFCCCCCC),
+          ),
+
+          // Neeche ka Profile section baad mein banayenge.
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileStat extends StatelessWidget {
+  final String title;
+  final String count;
+
+  const ProfileStat({
+    super.key,
+    required this.title,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: black,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            count,
+            style: const TextStyle(
+              color: Color(0xFF777777),
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileStatDivider extends StatelessWidget {
+  const ProfileStatDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 31,
+      color: const Color(0xFFD0D0D0),
     );
   }
 }
@@ -371,7 +570,6 @@ class WelcomeCard extends StatelessWidget {
               color: gold.withOpacity(0.09),
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.fromLTRB(19, 23, 8, 15),
             child: Column(
@@ -385,9 +583,7 @@ class WelcomeCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-
                 const SizedBox(height: 3),
-
                 const Text.rich(
                   TextSpan(
                     style: TextStyle(
@@ -408,9 +604,7 @@ class WelcomeCard extends StatelessWidget {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 const Text(
                   'Play Together\nConnect Forever',
                   style: TextStyle(
@@ -420,9 +614,7 @@ class WelcomeCard extends StatelessWidget {
                     height: 1.35,
                   ),
                 ),
-
                 const Spacer(),
-
                 Container(
                   width: 95,
                   height: 3,
@@ -434,7 +626,6 @@ class WelcomeCard extends StatelessWidget {
               ],
             ),
           ),
-
           const Positioned(
             right: 8,
             top: 35,
@@ -460,7 +651,7 @@ class WelcomeCard extends StatelessWidget {
   }
 }
 
-// GLOSSY WHITE DAILY OPTION BOXES
+// DAILY OPTION BOXES
 
 class DailyOption extends StatelessWidget {
   final String title;
@@ -554,9 +745,7 @@ class DailyOption extends StatelessWidget {
                     size: 28,
                   ),
                 ),
-
                 const SizedBox(width: 19),
-
                 Expanded(
                   child: Text(
                     title,
@@ -567,7 +756,6 @@ class DailyOption extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const Icon(
                   Icons.arrow_forward_ios_rounded,
                   color: black,
@@ -624,9 +812,7 @@ class OtherTabScreen extends StatelessWidget {
               size: 55,
             ),
           ),
-
           const SizedBox(height: 20),
-
           Text(
             title,
             style: const TextStyle(
