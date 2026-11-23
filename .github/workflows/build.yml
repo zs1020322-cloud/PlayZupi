@@ -35,6 +35,23 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Install launcher icon generator
+        run: flutter pub add --dev flutter_launcher_icons
+
+      - name: Configure PlayZupi launcher icon
+        run: |
+          cat > flutter_launcher_icons.yaml <<'EOF'
+          flutter_launcher_icons:
+            android: true
+            ios: false
+            image_path: "playzupi_icon.png"
+            adaptive_icon_background: "#FFFFFF"
+            adaptive_icon_foreground: "playzupi_icon.png"
+          EOF
+
+      - name: Generate app icon
+        run: dart run flutter_launcher_icons
+
       - name: Build APK
         run: flutter build apk --release
 
