@@ -10,6 +10,8 @@ const Color gold = Color(0xFFFFC83D);
 const Color white = Color(0xFFFFFFFF);
 const Color grey = Color(0xFFE8E8E8);
 
+// APP
+
 class PlayZupiApp extends StatelessWidget {
   const PlayZupiApp({super.key});
 
@@ -28,6 +30,8 @@ class PlayZupiApp extends StatelessWidget {
   }
 }
 
+// MAIN SCREEN
+
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -39,12 +43,7 @@ class _MainScreenState extends State<MainScreen> {
   int selectedIndex = 0;
 
   final List<String> tabNames = [
-    'Home',
-    'Room',
-    'Game',
-    'Wallet',
-    'Friend',
-    'Profile',
+    'Home', 'Room', 'Game', 'Wallet', 'Friend', 'Profile',
   ];
 
   final List<IconData> tabIcons = [
@@ -64,11 +63,7 @@ class _MainScreenState extends State<MainScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              white,
-              Color(0xFFF7F7F7),
-              Color(0xFFE1E1E1),
-            ],
+            colors: [white, Color(0xFFF7F7F7), Color(0xFFE1E1E1)],
           ),
         ),
         child: SafeArea(
@@ -116,9 +111,7 @@ class _MainScreenState extends State<MainScreen> {
               return Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    setState(() {
-                      selectedIndex = index;
-                    });
+                    setState(() => selectedIndex = index);
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -153,11 +146,7 @@ class _MainScreenState extends State<MainScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          tabIcons[index],
-                          size: 23,
-                          color: black,
-                        ),
+                        Icon(tabIcons[index], size: 23, color: black),
                         const SizedBox(height: 4),
                         FittedBox(
                           fit: BoxFit.scaleDown,
@@ -236,10 +225,7 @@ class HomeScreen extends StatelessWidget {
                     bottom: -6,
                     left: 0,
                     right: 0,
-                    child: Container(
-                      height: 3,
-                      color: gold,
-                    ),
+                    child: Container(height: 3, color: gold),
                   ),
                 ],
               ),
@@ -313,6 +299,35 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+// COMMON BOX DESIGN
+
+BoxDecoration profileBoxDecoration() {
+  return BoxDecoration(
+    borderRadius: BorderRadius.circular(30),
+    gradient: const LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [white, Color(0xFFFDFDFD), Color(0xFFE5E5E5)],
+    ),
+    border: Border.all(
+      color: const Color(0xFFEEEEEE),
+      width: 2,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: black.withOpacity(0.40),
+        blurRadius: 17,
+        offset: const Offset(0, 10),
+      ),
+      BoxShadow(
+        color: white.withOpacity(0.9),
+        blurRadius: 4,
+        offset: const Offset(-2, -2),
+      ),
+    ],
+  );
+}
+
 // PROFILE SCREEN
 
 class ProfileScreen extends StatelessWidget {
@@ -323,17 +338,15 @@ class ProfileScreen extends StatelessWidget {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 25),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // EDIT PROFILE
-
           Align(
             alignment: Alignment.topRight,
             child: OutlinedButton.icon(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Edit Profile coming soon'),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const EditProfileScreen(),
                   ),
                 );
               },
@@ -361,112 +374,91 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
           ),
-
-          const SizedBox(height: 22),
+          const SizedBox(height: 18),
 
           // DP, USERNAME AND ID
 
-          Row(
-            children: [
-              Container(
-                width: 94,
-                height: 94,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [white, grey],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(
-                    color: gold,
-                    width: 2.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: black.withOpacity(0.20),
-                      blurRadius: 9,
-                      offset: const Offset(0, 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: profileBoxDecoration(),
+            child: Row(
+              children: [
+                Container(
+                  width: 94,
+                  height: 94,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [white, grey],
                     ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.person_rounded,
-                  size: 57,
-                  color: black,
-                ),
-              ),
-
-              const SizedBox(width: 18),
-
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Username',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: black,
-                        fontSize: 23,
-                        fontWeight: FontWeight.w900,
+                    border: Border.all(color: gold, width: 2.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: black.withOpacity(0.20),
+                        blurRadius: 9,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'ID: 12345678',
-                      style: TextStyle(
-                        color: Color(0xFF777777),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.person_rounded,
+                    size: 57,
+                    color: black,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 18),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Username',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: black,
+                          fontSize: 23,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'ID: 12345678',
+                        style: TextStyle(
+                          color: Color(0xFF777777),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
 
-          const SizedBox(height: 30),
+          const SizedBox(height: 28),
 
-          // FOLLOWERS, FOLLOWING, VISITORS AND GIFT
+          // FOUR STATISTICS
 
           Row(
             children: const [
-              ProfileStat(
-                title: 'Followers',
-                count: '0',
-              ),
+              ProfileStat(title: 'Followers', count: '0'),
               ProfileStatDivider(),
-              ProfileStat(
-                title: 'Following',
-                count: '0',
-              ),
+              ProfileStat(title: 'Following', count: '0'),
               ProfileStatDivider(),
-              ProfileStat(
-                title: 'Visitors',
-                count: '0',
-              ),
+              ProfileStat(title: 'Visitors', count: '0'),
               ProfileStatDivider(),
-              ProfileStat(
-                title: 'Gift',
-                count: '0',
-              ),
+              ProfileStat(title: 'Gift', count: '0'),
             ],
           ),
-
-          const SizedBox(height: 13),
-
-          // ONE LIGHT HORIZONTAL LINE
-
+          const SizedBox(height: 15),
           Container(
             height: 1,
             width: double.infinity,
             color: const Color(0xFFCCCCCC),
           ),
-
-          // Neeche ka Profile section baad mein banayenge.
         ],
       ),
     );
@@ -487,7 +479,6 @@ class ProfileStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -524,6 +515,465 @@ class ProfileStatDivider extends StatelessWidget {
       width: 1,
       height: 31,
       color: const Color(0xFFD0D0D0),
+    );
+  }
+}
+
+// EDIT PROFILE PAGE
+
+class EditProfileScreen extends StatefulWidget {
+  const EditProfileScreen({super.key});
+
+  @override
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController bioController = TextEditingController();
+
+  String? selectedGender;
+  String? selectedCountry;
+  DateTime? selectedDate;
+
+  final List<String> countries = [
+    'United Arab Emirates',
+    'Pakistan',
+    'India',
+    'Saudi Arabia',
+    'Bangladesh',
+    'Afghanistan',
+    'Nepal',
+    'Sri Lanka',
+    'United Kingdom',
+    'United States',
+    'Qatar',
+    'Oman',
+    'Kuwait',
+    'Turkey',
+    'Canada',
+  ];
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    bioController.dispose();
+    super.dispose();
+  }
+
+  Future<void> chooseDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2005, 1, 1),
+      firstDate: DateTime(1950),
+      lastDate: DateTime.now(),
+    );
+
+    if (date != null) {
+      setState(() => selectedDate = date);
+    }
+  }
+
+  void showComingSoon(String title) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$title coming soon'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: white,
+      appBar: AppBar(
+        backgroundColor: white,
+        foregroundColor: black,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(
+            color: black,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [white, Color(0xFFF7F7F7), Color(0xFFE1E1E1)],
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 15, 18, 30),
+          child: Column(
+            children: [
+              // CHANGE DP
+
+              EditProfileOption(
+                title: 'Change DP',
+                icon: Icons.camera_alt_rounded,
+                onTap: () => showComingSoon('Change DP'),
+              ),
+
+              // CHANGE NAME
+
+              ProfileInputBox(
+                title: 'Change Name',
+                icon: Icons.person_rounded,
+                child: TextField(
+                  controller: nameController,
+                  style: const TextStyle(
+                    color: black,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'Enter your name',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Color(0xFF999999)),
+                  ),
+                ),
+              ),
+
+              // BIO
+
+              ProfileInputBox(
+                title: 'Bio',
+                icon: Icons.description_rounded,
+                child: TextField(
+                  controller: bioController,
+                  maxLines: 3,
+                  style: const TextStyle(
+                    color: black,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'Write something about yourself',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Color(0xFF999999)),
+                  ),
+                ),
+              ),
+
+              // GENDER
+
+              ProfileInputBox(
+                title: 'Gender',
+                icon: Icons.wc_rounded,
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedGender,
+                    isExpanded: true,
+                    hint: const Text(
+                      'Select Gender',
+                      style: TextStyle(color: Color(0xFF999999)),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Male',
+                        child: Text('Male'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Female',
+                        child: Text('Female'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() => selectedGender = value);
+                    },
+                  ),
+                ),
+              ),
+
+              // DATE OF BIRTH
+
+              EditProfileOption(
+                title: selectedDate == null
+                    ? 'Date of Birth'
+                    : '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}',
+                icon: Icons.calendar_month_rounded,
+                onTap: chooseDate,
+              ),
+
+              // COUNTRY
+
+              ProfileInputBox(
+                title: 'Country',
+                icon: Icons.public_rounded,
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedCountry,
+                    isExpanded: true,
+                    hint: const Text(
+                      'Select Country',
+                      style: TextStyle(color: Color(0xFF999999)),
+                    ),
+                    items: countries.map((country) {
+                      return DropdownMenuItem(
+                        value: country,
+                        child: Text(
+                          country,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() => selectedCountry = value);
+                    },
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // THREE BOXES
+
+              const ProfileSectionHeading(title: 'Profile Collection'),
+
+              EditProfileOption(
+                title: 'Frame',
+                icon: Icons.crop_square_rounded,
+                onTap: () => showComingSoon('Frame'),
+              ),
+              EditProfileOption(
+                title: 'Teams',
+                icon: Icons.groups_rounded,
+                onTap: () => showComingSoon('Teams'),
+              ),
+              EditProfileOption(
+                title: 'Ornament',
+                icon: Icons.auto_awesome_rounded,
+                onTap: () => showComingSoon('Ornament'),
+              ),
+
+              const SizedBox(height: 12),
+
+              // FIVE BOXES
+
+              const ProfileSectionHeading(title: 'Badges'),
+
+              EditProfileOption(
+                title: 'Entry',
+                icon: Icons.login_rounded,
+                onTap: () => showComingSoon('Entry'),
+              ),
+              EditProfileOption(
+                title: 'Crown',
+                icon: Icons.workspace_premium_rounded,
+                onTap: () => showComingSoon('Crown'),
+              ),
+              EditProfileOption(
+                title: 'Game Badge',
+                icon: Icons.sports_esports_rounded,
+                onTap: () => showComingSoon('Game Badge'),
+              ),
+              EditProfileOption(
+                title: 'Money Badge',
+                icon: Icons.paid_rounded,
+                onTap: () => showComingSoon('Money Badge'),
+              ),
+              EditProfileOption(
+                title: 'Gift Badge',
+                icon: Icons.card_giftcard_rounded,
+                onTap: () => showComingSoon('Gift Badge'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// EDIT PROFILE INPUT BOX
+
+class ProfileInputBox extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Widget child;
+
+  const ProfileInputBox({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 22),
+      padding: const EdgeInsets.fromLTRB(20, 17, 20, 15),
+      decoration: profileBoxDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              ProfileGoldIcon(icon: icon),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: black,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 5),
+            child: child,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// EDIT PROFILE OPTION BOX
+
+class EditProfileOption extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const EditProfileOption({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 88,
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 22),
+      decoration: profileBoxDecoration(),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: Row(
+              children: [
+                ProfileGoldIcon(icon: icon),
+                const SizedBox(width: 19),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: black,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: black,
+                  size: 21,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// GOLD ICON DESIGN
+
+class ProfileGoldIcon extends StatelessWidget {
+  final IconData icon;
+
+  const ProfileGoldIcon({
+    super.key,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 49,
+      height: 49,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFFE9A8),
+            gold,
+            Color(0xFFD99A00),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFC18B00),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: black.withOpacity(0.20),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: black, size: 28),
+    );
+  }
+}
+
+// SECTION HEADING
+
+class ProfileSectionHeading extends StatelessWidget {
+  final String title;
+
+  const ProfileSectionHeading({
+    super.key,
+    required this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20, top: 5),
+      child: Row(
+        children: [
+          Container(
+            width: 5,
+            height: 25,
+            decoration: BoxDecoration(
+              color: gold,
+              borderRadius: BorderRadius.circular(5),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            title,
+            style: const TextStyle(
+              color: black,
+              fontSize: 21,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -713,38 +1163,7 @@ class DailyOption extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 22),
             child: Row(
               children: [
-                Container(
-                  width: 49,
-                  height: 49,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFFFFE9A8),
-                        gold,
-                        Color(0xFFD99A00),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFFC18B00),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: black.withOpacity(0.20),
-                        blurRadius: 5,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    icon,
-                    color: black,
-                    size: 28,
-                  ),
-                ),
+                ProfileGoldIcon(icon: icon),
                 const SizedBox(width: 19),
                 Expanded(
                   child: Text(
@@ -806,11 +1225,7 @@ class OtherTabScreen extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(
-              icon,
-              color: black,
-              size: 55,
-            ),
+            child: Icon(icon, color: black, size: 55),
           ),
           const SizedBox(height: 20),
           Text(
