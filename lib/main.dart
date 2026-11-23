@@ -1334,3 +1334,58 @@ class OtherTabScreen extends StatelessWidget {
     );
   }
 }
+
+
+
+class ProfileStat extends StatelessWidget {
+  final String title;
+  final String count;
+
+  const ProfileStat({
+    super.key,
+    required this.title,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            count,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileStatDivider extends StatelessWidget {
+  const ProfileStatDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 35,
+      width: 1,
+      color: const Color(0xFFCCCCCC),
+    );
+  }
+}
+
+
