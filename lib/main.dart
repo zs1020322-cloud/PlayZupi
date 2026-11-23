@@ -1,5 +1,12 @@
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const PlayZupiApp());
@@ -318,11 +325,55 @@ BoxDecoration profileBoxDecoration() {
 
 // PROFILE SCREEN
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String username = 'Username';
+  String bio = '';
+  String? gender;
+  String? country;
+  Uint8List? dpBytes;
+
+  final Map<String, String> countryFlags = const {
+    'United Arab Emirates': '🇦🇪', 'Pakistan': '🇵🇰', 'India': '🇮🇳',
+    'Saudi Arabia': '🇸🇦', 'Bangladesh': '🇧🇩', 'Afghanistan': '🇦🇫',
+    'Nepal': '🇳🇵', 'Sri Lanka': '🇱🇰', 'United Kingdom': '🇬🇧',
+    'United States': '🇺🇸', 'Qatar': '🇶🇦', 'Oman': '🇴🇲',
+    'Kuwait': '🇰🇼', 'Turkey': '🇹🇷', 'Canada': '🇨🇦',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    loadProfile();
+  }
+
+  Future<void> loadProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final encodedDp = prefs.getString('profile_dp');
+    if (!mounted) return;
+    setState(() {
+      username = prefs.getString('profile_name') ?? 'Username';
+      if (username.trim().isEmpty) username = 'Username';
+      bio = prefs.getString('profile_bio') ?? '';
+      gender = prefs.getString('profile_gender');
+      country = prefs.getString('profile_country');
+      dpBytes = encodedDp == null ? null : base64Decode(encodedDp);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final bool showGender = gender == 'Male' || gender == 'Female';
+    final Color genderColor = gender == 'Male'
+        ? const Color(0xFF2585E8)
+        : const Color(0xFFE85A9B);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 25),
       child: Column(
@@ -330,67 +381,75 @@ class ProfileScreen extends StatelessWidget {
           Align(
             alignment: Alignment.topRight,
             child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                 );
+                loadProfile();
               },
               icon: const Icon(Icons.edit_rounded, size: 17, color: black),
-              label: const Text(
-                'Edit Profile',
-                style: TextStyle(color: black, fontWeight: FontWeight.w800),
-              ),
+              label: const Text('Edit Profile', style: TextStyle(color: black, fontWeight: FontWeight.w800)),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: gold, width: 1.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(22),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
                 padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 10),
               ),
             ),
           ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(colors: [white, grey]),
-                  border: Border.all(color: gold, width: 2.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: black.withOpacity(0.18),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.person_rounded, size: 54, color: black),
-              ),
-              const SizedBox(width: 18),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Username',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: black, fontSize: 23, fontWeight: FontWeight.w900),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'ID: 12345678',
-                      style: TextStyle(color: Color(0xFF777777), fontSize: 15, fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          const SizedBox(height: 18),
+          Container(
+            width: 112,
+            height: 112,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(colors: [white, grey]),
+              border: Border.all(color: gold, width: 2.5),
+              boxShadow: [BoxShadow(color: black.withOpacity(0.18), blurRadius: 8, offset: const Offset(0, 4))],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: dpBytes == null
+                ? const Icon(Icons.person_rounded, size: 66, color: black)
+                : Image.memory(dpBytes!, fit: BoxFit.cover),
           ),
+          const SizedBox(height: 13),
+          Text(
+            username,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: black, fontSize: 23, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 6),
+          const Text('ID: 12345678', style: TextStyle(color: Color(0xFF777777), fontSize: 15, fontWeight: FontWeight.w700)),
+          if (showGender || country != null) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 13,
+              children: [
+                if (showGender)
+                  Icon(gender == 'Male' ? Icons.male_rounded : Icons.female_rounded, color: genderColor, size: 25),
+                if (country != null)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(countryFlags[country] ?? '🌍', style: const TextStyle(fontSize: 21)),
+                      const SizedBox(width: 5),
+                      Text(country!, style: const TextStyle(color: black, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+              ],
+            ),
+          ],
+          if (bio.trim().isNotEmpty) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: Text(bio, textAlign: TextAlign.center, style: const TextStyle(color: black, fontSize: 14, height: 1.4)),
+            ),
+          ],
           const SizedBox(height: 30),
           Row(
             children: const [
@@ -411,60 +470,6 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-class ProfileStat extends StatelessWidget {
-  final String title;
-  final String count;
-
-  const ProfileStat({
-    super.key,
-    required this.title,
-    required this.count,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: black,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const SizedBox(height: 7),
-          Text(
-            count,
-            style: const TextStyle(
-              color: Color(0xFF777777),
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ProfileStatDivider extends StatelessWidget {
-  const ProfileStatDivider({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 31,
-      color: const Color(0xFFD0D0D0),
-    );
-  }
-}
-
 // EDIT PROFILE PAGE
 
 class EditProfileScreen extends StatefulWidget {
@@ -477,36 +482,57 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController bioController = TextEditingController();
-
   String? selectedGender;
   String? selectedCountry;
   DateTime? selectedDate;
+  Uint8List? selectedDpBytes;
+  String originalName = '';
+  DateTime? lastNameChange;
+  bool isLoading = true;
+  bool isSaving = false;
+
+  final ImagePicker imagePicker = ImagePicker();
 
   final List<String> countries = [
-    'United Arab Emirates',
-    'Pakistan',
-    'India',
-    'Saudi Arabia',
-    'Bangladesh',
-    'Afghanistan',
-    'Nepal',
-    'Sri Lanka',
-    'United Kingdom',
-    'United States',
-    'Qatar',
-    'Oman',
-    'Kuwait',
-    'Turkey',
-    'Canada',
+    'United Arab Emirates', 'Pakistan', 'India', 'Saudi Arabia',
+    'Bangladesh', 'Afghanistan', 'Nepal', 'Sri Lanka', 'United Kingdom',
+    'United States', 'Qatar', 'Oman', 'Kuwait', 'Turkey', 'Canada',
   ];
 
-  final Map<String, String> countryFlags = {
+  final Map<String, String> countryFlags = const {
     'United Arab Emirates': '🇦🇪', 'Pakistan': '🇵🇰', 'India': '🇮🇳',
     'Saudi Arabia': '🇸🇦', 'Bangladesh': '🇧🇩', 'Afghanistan': '🇦🇫',
     'Nepal': '🇳🇵', 'Sri Lanka': '🇱🇰', 'United Kingdom': '🇬🇧',
     'United States': '🇺🇸', 'Qatar': '🇶🇦', 'Oman': '🇴🇲',
     'Kuwait': '🇰🇼', 'Turkey': '🇹🇷', 'Canada': '🇨🇦',
   };
+
+  @override
+  void initState() {
+    super.initState();
+    loadProfileData();
+  }
+
+  Future<void> loadProfileData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedDob = prefs.getString('profile_dob');
+    final encodedDp = prefs.getString('profile_dp');
+    final changedAt = prefs.getInt('profile_name_changed_at');
+    if (!mounted) return;
+    setState(() {
+      originalName = prefs.getString('profile_name') ?? '';
+      nameController.text = originalName;
+      bioController.text = prefs.getString('profile_bio') ?? '';
+      selectedGender = prefs.getString('profile_gender');
+      selectedCountry = prefs.getString('profile_country');
+      selectedDate = savedDob == null ? null : DateTime.tryParse(savedDob);
+      selectedDpBytes = encodedDp == null ? null : base64Decode(encodedDp);
+      lastNameChange = changedAt == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(changedAt);
+      isLoading = false;
+    });
+  }
 
   @override
   void dispose() {
@@ -522,23 +548,135 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       firstDate: DateTime(1950),
       lastDate: DateTime.now(),
     );
+    if (date != null) setState(() => selectedDate = date);
+  }
 
-    if (date != null) {
-      setState(() => selectedDate = date);
+  Future<void> chooseDp() async {
+    try {
+      final picked = await imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 95,
+        maxWidth: 2048,
+        maxHeight: 2048,
+      );
+      if (picked == null || !mounted) return;
+
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        compressQuality: 92,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Adjust Profile Photo',
+            toolbarColor: white,
+            toolbarWidgetColor: black,
+            activeControlsWidgetColor: gold,
+            backgroundColor: white,
+            dimmedLayerColor: black,
+            cropFrameColor: gold,
+            cropGridColor: white,
+            lockAspectRatio: true,
+            hideBottomControls: false,
+          ),
+          IOSUiSettings(title: 'Adjust Profile Photo', aspectRatioLockEnabled: true),
+        ],
+      );
+      if (cropped == null || !mounted) return;
+      final bytes = await cropped.readAsBytes();
+      setState(() => selectedDpBytes = bytes);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not select photo: $e')),
+      );
     }
   }
 
   void showComingSoon(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$title coming soon'),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text('$title coming soon'), behavior: SnackBarBehavior.floating),
     );
+  }
+
+  Future<void> saveProfile() async {
+    if (isSaving) return;
+    final newName = nameController.text.trim();
+    final newBio = bioController.text.trim();
+    final words = newBio.isEmpty ? 0 : newBio.split(RegExp(r'\s+')).length;
+
+    if (newName.length > 30) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name can be up to 30 characters.')));
+      return;
+    }
+    if (words > 200) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bio can contain up to 200 words.')));
+      return;
+    }
+
+    final bool nameChanged = newName != originalName;
+    if (nameChanged && lastNameChange != null) {
+      final remaining = const Duration(hours: 24) - DateTime.now().difference(lastNameChange!);
+      if (remaining > Duration.zero) {
+        final hours = remaining.inHours;
+        final minutes = remaining.inMinutes.remainder(60);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('You can change your name again in ${hours}h ${minutes}m.')),
+        );
+        return;
+      }
+    }
+
+    setState(() => isSaving = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('profile_name', newName);
+      await prefs.setString('profile_bio', newBio);
+      if (selectedGender == null) {
+        await prefs.remove('profile_gender');
+      } else {
+        await prefs.setString('profile_gender', selectedGender!);
+      }
+      if (selectedCountry == null) {
+        await prefs.remove('profile_country');
+      } else {
+        await prefs.setString('profile_country', selectedCountry!);
+      }
+      if (selectedDate == null) {
+        await prefs.remove('profile_dob');
+      } else {
+        await prefs.setString('profile_dob', selectedDate!.toIso8601String());
+      }
+      if (selectedDpBytes == null) {
+        await prefs.remove('profile_dp');
+      } else {
+        await prefs.setString('profile_dp', base64Encode(selectedDpBytes!));
+      }
+      if (nameChanged) {
+        await prefs.setInt('profile_name_changed_at', DateTime.now().millisecondsSinceEpoch);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile saved successfully!')),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+    } finally {
+      if (mounted) setState(() => isSaving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: gold)));
+    }
+    final bool nameLocked = lastNameChange != null &&
+        DateTime.now().difference(lastNameChange!) < const Duration(hours: 24);
+
     return Scaffold(
       backgroundColor: white,
       appBar: AppBar(
@@ -546,75 +684,55 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         foregroundColor: black,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'Edit Profile',
-          style: TextStyle(
-            color: black,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        title: const Text('Edit Profile', style: TextStyle(color: black, fontWeight: FontWeight.w900)),
       ),
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [white, Color(0xFFF7F7F7), Color(0xFFE1E1E1)],
-          ),
+          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [white, Color(0xFFF7F7F7), Color(0xFFE1E1E1)]),
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(18, 15, 18, 30),
           child: Column(
             children: [
-              // CHANGE DP
-
               EditProfileOption(
-                title: 'Change DP',
+                title: selectedDpBytes == null ? 'Change DP' : 'Change DP (Selected)',
                 icon: Icons.camera_alt_rounded,
-                onTap: () => showComingSoon('Change DP'),
+                onTap: chooseDp,
               ),
-
-              // CHANGE NAME
-
               ProfileInputBox(
                 title: 'Change Name',
                 icon: Icons.person_rounded,
                 child: TextField(
                   controller: nameController,
-                  style: const TextStyle(
-                    color: black,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  decoration: const InputDecoration(
+                  readOnly: nameLocked,
+                  maxLength: 30,
+                  inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                  style: const TextStyle(color: black, fontWeight: FontWeight.w700),
+                  decoration: InputDecoration(
                     hintText: 'Enter your name',
                     border: InputBorder.none,
-                    hintStyle: TextStyle(color: Color(0xFF999999)),
+                    counterText: '',
+                    helperText: nameLocked ? 'Name change available after 24 hours' : 'Maximum 30 characters',
+                    hintStyle: const TextStyle(color: Color(0xFF999999)),
                   ),
                 ),
               ),
-
-              // BIO
-
               ProfileInputBox(
-                title: 'Bio',
+                title: 'Bio (up to 200 words)',
                 icon: Icons.description_rounded,
                 child: TextField(
                   controller: bioController,
-                  maxLines: 3,
-                  style: const TextStyle(
-                    color: black,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  maxLines: 5,
+                  minLines: 3,
+                  inputFormatters: [const MaxWordsInputFormatter(200)],
+                  style: const TextStyle(color: black, fontWeight: FontWeight.w700),
                   decoration: const InputDecoration(
-                    hintText: 'Write something about yourself',
+                    hintText: 'Write something about yourself (maximum 200 words)',
                     border: InputBorder.none,
                     hintStyle: TextStyle(color: Color(0xFF999999)),
                   ),
                 ),
               ),
-
-              // GENDER
-
               ProfileInputBox(
                 title: 'Gender',
                 icon: Icons.wc_rounded,
@@ -628,35 +746,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ],
                 ),
               ),
-
-              // DATE OF BIRTH
-
               ProfileInputBox(
                 title: 'Date of Birth',
                 icon: Icons.calendar_month_rounded,
                 child: Row(
                   children: [
-                    Expanded(
-                      child: DatePartChoice(
-                        title: selectedDate == null ? 'Date' : '${selectedDate!.day}/${selectedDate!.month}',
-                        icon: Icons.calendar_today_rounded,
-                        onTap: chooseDate,
-                      ),
-                    ),
+                    Expanded(child: DatePartChoice(title: selectedDate == null ? 'Date' : '${selectedDate!.day}/${selectedDate!.month}', icon: Icons.calendar_today_rounded, onTap: chooseDate)),
                     const SizedBox(width: 10),
-                    Expanded(
-                      child: DatePartChoice(
-                        title: selectedDate == null ? 'Year' : '${selectedDate!.year}',
-                        icon: Icons.event_rounded,
-                        onTap: chooseDate,
-                      ),
-                    ),
+                    Expanded(child: DatePartChoice(title: selectedDate == null ? 'Year' : '${selectedDate!.year}', icon: Icons.event_rounded, onTap: chooseDate)),
                   ],
                 ),
               ),
-
-              // COUNTRY
-
               ProfileInputBox(
                 title: 'Country',
                 icon: Icons.public_rounded,
@@ -664,100 +764,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: DropdownButton<String>(
                     value: selectedCountry,
                     isExpanded: true,
-                    hint: const Text(
-                      'Select Country',
-                      style: TextStyle(color: Color(0xFF999999)),
-                    ),
-                    items: countries.map((country) {
-                      return DropdownMenuItem(
-                        value: country,
-                        child: Row(
-                          children: [
-                            Text(countryFlags[country] ?? '🌍', style: const TextStyle(fontSize: 20)),
-                            const SizedBox(width: 9),
-                            Expanded(child: Text(country, overflow: TextOverflow.ellipsis)),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() => selectedCountry = value);
-                    },
+                    hint: const Text('Select Country', style: TextStyle(color: Color(0xFF999999))),
+                    items: countries.map((country) => DropdownMenuItem(
+                      value: country,
+                      child: Row(children: [Text(countryFlags[country] ?? '🌍', style: const TextStyle(fontSize: 20)), const SizedBox(width: 9), Expanded(child: Text(country, overflow: TextOverflow.ellipsis))]),
+                    )).toList(),
+                    onChanged: (value) => setState(() => selectedCountry = value),
                   ),
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // THREE BOXES
-
               const ProfileSectionHeading(title: 'Profile Collection'),
-
-              EditProfileOption(
-                title: 'Frame',
-                icon: Icons.crop_square_rounded,
-                onTap: () => showComingSoon('Frame'),
-              ),
-              EditProfileOption(
-                title: 'Teams',
-                icon: Icons.groups_rounded,
-                onTap: () => showComingSoon('Teams'),
-              ),
-              EditProfileOption(
-                title: 'Ornament',
-                icon: Icons.auto_awesome_rounded,
-                onTap: () => showComingSoon('Ornament'),
-              ),
-
+              EditProfileOption(title: 'Frame', icon: Icons.crop_square_rounded, onTap: () => showComingSoon('Frame')),
+              EditProfileOption(title: 'Teams', icon: Icons.groups_rounded, onTap: () => showComingSoon('Teams')),
+              EditProfileOption(title: 'Ornament', icon: Icons.auto_awesome_rounded, onTap: () => showComingSoon('Ornament')),
               const SizedBox(height: 12),
-
-              // FIVE BOXES
-
               const ProfileSectionHeading(title: 'Badges'),
-
-              EditProfileOption(
-                title: 'Entry',
-                icon: Icons.login_rounded,
-                onTap: () => showComingSoon('Entry'),
-              ),
-              EditProfileOption(
-                title: 'Crown',
-                icon: Icons.workspace_premium_rounded,
-                onTap: () => showComingSoon('Crown'),
-              ),
-              EditProfileOption(
-                title: 'Game Badge',
-                icon: Icons.sports_esports_rounded,
-                onTap: () => showComingSoon('Game Badge'),
-              ),
-              EditProfileOption(
-                title: 'Money Badge',
-                icon: Icons.paid_rounded,
-                onTap: () => showComingSoon('Money Badge'),
-              ),
-              EditProfileOption(
-                title: 'Gift Badge',
-                icon: Icons.card_giftcard_rounded,
-                onTap: () => showComingSoon('Gift Badge'),
-              ),
-
+              EditProfileOption(title: 'Entry', icon: Icons.login_rounded, onTap: () => showComingSoon('Entry')),
+              EditProfileOption(title: 'Crown', icon: Icons.workspace_premium_rounded, onTap: () => showComingSoon('Crown')),
+              EditProfileOption(title: 'Game Badge', icon: Icons.sports_esports_rounded, onTap: () => showComingSoon('Game Badge')),
+              EditProfileOption(title: 'Money Badge', icon: Icons.paid_rounded, onTap: () => showComingSoon('Money Badge')),
+              EditProfileOption(title: 'Gift Badge', icon: Icons.card_giftcard_rounded, onTap: () => showComingSoon('Gift Badge')),
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 height: 58,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Profile details saved (demo)')),
-                    );
-                  },
+                  onPressed: isSaving ? null : saveProfile,
                   icon: const Icon(Icons.save_rounded, color: black),
-                  label: const Text('Save', style: TextStyle(color: black, fontSize: 18, fontWeight: FontWeight.w900)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: gold,
-                    elevation: 3,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                  ),
+                  label: Text(isSaving ? 'Saving...' : 'Save', style: const TextStyle(color: black, fontSize: 18, fontWeight: FontWeight.w900)),
+                  style: ElevatedButton.styleFrom(backgroundColor: gold, elevation: 3, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
                 ),
               ),
             ],
@@ -765,6 +801,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       ),
     );
+  }
+}
+
+class MaxWordsInputFormatter extends TextInputFormatter {
+  final int maxWords;
+  const MaxWordsInputFormatter(this.maxWords);
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text.trim();
+    final words = text.isEmpty ? 0 : text.split(RegExp(r'\s+')).length;
+    return words <= maxWords ? newValue : oldValue;
   }
 }
 
