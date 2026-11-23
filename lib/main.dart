@@ -552,47 +552,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> chooseDp() async {
-    try {
-      final picked = await imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 95,
-        maxWidth: 2048,
-        maxHeight: 2048,
-      );
-      if (picked == null || !mounted) return;
+  try {
+    final picked = await imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
 
-      final cropped = await ImageCropper().cropImage(
-        sourcePath: picked.path,
-        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-        compressQuality: 92,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Adjust Profile Photo',
-            toolbarColor: white,
-            toolbarWidgetColor: black,
-            activeControlsWidgetColor: gold,
-            backgroundColor: white,
-            dimmedLayerColor: black,
-            cropFrameColor: gold,
-            cropGridColor: white,
-            lockAspectRatio: true,
-            hideBottomControls: false,
-          ),
-          IOSUiSettings(title: 'Adjust Profile Photo', aspectRatioLockEnabled: true),
-        ],
-      );
-      if (cropped == null || !mounted) return;
-      final bytes = await cropped.readAsBytes();
-      setState(() => selectedDpBytes = bytes);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not select photo: $e')),
-      );
-    }
+    if (picked == null || !mounted) return;
+
+    final bytes = await picked.readAsBytes();
+
+    if (!mounted) return;
+
+    setState(() {
+      selectedDpBytes = bytes;
+    });
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not select photo: $e')),
+    );
   }
+}
 
   void showComingSoon(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
