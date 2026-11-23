@@ -486,6 +486,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? selectedCountry;
   DateTime? selectedDate;
   Uint8List? selectedDpBytes;
+  Uint8List? dpPreviewBytes;
   String originalName = '';
   DateTime? lastNameChange;
   bool isLoading = true;
@@ -555,19 +556,43 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   try {
     final picked = await imagePicker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 80,
+      imageQuality: 90,
       maxWidth: 1024,
       maxHeight: 1024,
     );
 
     if (picked == null || !mounted) return;
 
-    final bytes = await picked.readAsBytes();
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: picked.path,
+      aspectRatio: const CropAspectRatio(
+        ratioX: 1,
+        ratioY: 1,
+      ),
+      compressQuality: 90,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Crop Profile Photo',
+          toolbarColor: black,
+          toolbarWidgetColor: white,
+          activeControlsWidgetColor: gold,
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(
+          title: 'Crop Profile Photo',
+          aspectRatioLockEnabled: true,
+        ),
+      ],
+    );
+
+    if (cropped == null || !mounted) return;
+
+    final bytes = await cropped.readAsBytes();
 
     if (!mounted) return;
 
     setState(() {
-      selectedDpBytes = bytes;
+      dpPreviewBytes = bytes;
     });
   } catch (e) {
     if (!mounted) return;
@@ -678,11 +703,136 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           padding: const EdgeInsets.fromLTRB(18, 15, 18, 30),
           child: Column(
             children: [
-              EditProfileOption(
-                title: selectedDpBytes == null ? 'Change DP' : 'Change DP (Selected)',
-                icon: Icons.camera_alt_rounded,
-                onTap: chooseDp,
+              Container(
+  width: double.infinity,
+  margin: const EdgeInsets.only(bottom: 22),
+  padding: const EdgeInsets.all(18),
+  decoration: profileBoxDecoration(),
+  child: Column(
+    children: [
+      Row(
+        children: [
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: gold, width: 2),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: (dpPreviewBytes ?? selectedDpBytes) == null
+                ? const Icon(Icons.person, size: 40, color: black)
+                : Image.memory(
+                    dpPreviewBytes ?? selectedDpBytes!,
+                    fit: BoxFit.cover,
+                  ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Profile Photo',
+                  style: TextStyle(
+                    color: black,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 42,
+                  child: ElevatedButton.icon(
+                    onPressed: chooseDp,
+                    icon: const Icon(Icons.camera_alt_rounded, color: black),
+                    label: const Text(
+                      'Change DP',
+                      style: TextStyle(
+                        color: black,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: gold,
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      if (dpPreviewBytes != null) ...[
+        const SizedBox(height: 16),
+        const Text(
+          'Confirm your new profile photo',
+          style: TextStyle(
+            color: black,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    selectedDpBytes = dpPreviewBytes;
+                    dpPreviewBytes = null;
+                  });
+                },
+                icon: const Icon(Icons.check, color: white),
+                label: const Text(
+                  'Confirm',
+                  style: TextStyle(
+                    color: white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF218838),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                ),
               ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    dpPreviewBytes = null;
+                  });
+                },
+                icon: const Icon(Icons.close, color: white),
+                label: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC62828),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ],
+  ),
+),
               ProfileInputBox(
                 title: 'Change Name',
                 icon: Icons.person_rounded,
@@ -758,28 +908,87 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              const ProfileSectionHeading(title: 'Profile Collection'),
-              EditProfileOption(title: 'Frame', icon: Icons.crop_square_rounded, onTap: () => showComingSoon('Frame')),
-              EditProfileOption(title: 'Teams', icon: Icons.groups_rounded, onTap: () => showComingSoon('Teams')),
-              EditProfileOption(title: 'Ornament', icon: Icons.auto_awesome_rounded, onTap: () => showComingSoon('Ornament')),
-              const SizedBox(height: 12),
-              const ProfileSectionHeading(title: 'Badges'),
-              EditProfileOption(title: 'Entry', icon: Icons.login_rounded, onTap: () => showComingSoon('Entry')),
-              EditProfileOption(title: 'Crown', icon: Icons.workspace_premium_rounded, onTap: () => showComingSoon('Crown')),
-              EditProfileOption(title: 'Game Badge', icon: Icons.sports_esports_rounded, onTap: () => showComingSoon('Game Badge')),
-              EditProfileOption(title: 'Money Badge', icon: Icons.paid_rounded, onTap: () => showComingSoon('Money Badge')),
-              EditProfileOption(title: 'Gift Badge', icon: Icons.card_giftcard_rounded, onTap: () => showComingSoon('Gift Badge')),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                height: 58,
-                child: ElevatedButton.icon(
-                  onPressed: isSaving ? null : saveProfile,
-                  icon: const Icon(Icons.save_rounded, color: black),
-                  label: Text(isSaving ? 'Saving...' : 'Save', style: const TextStyle(color: black, fontSize: 18, fontWeight: FontWeight.w900)),
-                  style: ElevatedButton.styleFrom(backgroundColor: gold, elevation: 3, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
-                ),
-              ),
+const ProfileSectionHeading(title: 'Profile Collection'),
+
+EditProfileOption(
+  title: 'Frame',
+  icon: Icons.crop_square_rounded,
+  onTap: () => showComingSoon('Frame'),
+),
+
+EditProfileOption(
+  title: 'Teams',
+  icon: Icons.groups_rounded,
+  onTap: () => showComingSoon('Teams'),
+),
+
+EditProfileOption(
+  title: 'Ornament',
+  icon: Icons.auto_awesome_rounded,
+  onTap: () => showComingSoon('Ornament'),
+),
+
+const SizedBox(height: 12),
+const ProfileSectionHeading(title: 'Badges'),
+
+EditProfileOption(
+  title: 'Entry',
+  icon: Icons.login_rounded,
+  onTap: () => showComingSoon('Entry'),
+),
+
+EditProfileOption(
+  title: 'Crown',
+  icon: Icons.workspace_premium_rounded,
+  onTap: () => showComingSoon('Crown'),
+),
+
+EditProfileOption(
+  title: 'Game Badge',
+  icon: Icons.sports_esports_rounded,
+  onTap: () => showComingSoon('Game Badge'),
+),
+
+EditProfileOption(
+  title: 'Money Badge',
+  icon: Icons.paid_rounded,
+  onTap: () => showComingSoon('Money Badge'),
+),
+
+EditProfileOption(
+  title: 'Gift Badge',
+  icon: Icons.card_giftcard_rounded,
+  onTap: () => showComingSoon('Gift Badge'),
+),
+
+const SizedBox(height: 8),
+
+SizedBox(
+  width: double.infinity,
+  height: 58,
+  child: ElevatedButton.icon(
+    onPressed: isSaving ? null : saveProfile,
+    icon: const Icon(
+      Icons.save_rounded,
+      color: black,
+    ),
+    label: Text(
+      isSaving ? 'Saving...' : 'Save',
+      style: const TextStyle(
+        color: black,
+        fontSize: 18,
+        fontWeight: FontWeight.w900,
+      ),
+    ),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: gold,
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
+    ),
+  ),
+),
             ],
           ),
         ),
@@ -790,6 +999,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
 class MaxWordsInputFormatter extends TextInputFormatter {
   final int maxWords;
+
   const MaxWordsInputFormatter(this.maxWords);
 
   @override
