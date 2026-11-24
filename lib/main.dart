@@ -1355,13 +1355,15 @@ class _DpCropScreenState extends State<DpCropScreen> {
 
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    // Smooth zoom with pinch and pan with one finger. Keep the pinch anchor fixed.
+    // Calculate from the gesture's starting focal point (not the per-frame delta),
+    // so drag movement accumulates and pinch zoom stays anchored smoothly.
     final nextZoom = (_startZoom * details.scale).clamp(1.0, 5.0).toDouble();
     final center = Offset(_viewportSide / 2, _viewportSide / 2);
     final focalFromCenter = _startFocal - center;
     final zoomRatio = nextZoom / _startZoom;
     final anchorShift = focalFromCenter * (1.0 - zoomRatio);
-    final nextOffset = _startOffset + details.focalPointDelta + anchorShift;
+    final focalMovement = details.localFocalPoint - _startFocal;
+    final nextOffset = _startOffset + focalMovement + anchorShift;
     setState(() {
       _zoom = nextZoom;
       _offset = _clampOffset(nextOffset, nextZoom);
