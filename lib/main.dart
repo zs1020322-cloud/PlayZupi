@@ -679,7 +679,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void showComingSoon(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$title coming soon"),
+    content: Text('$title coming soon'),
         behavior: SnackBarBehavior.floating,
       ),
     );
