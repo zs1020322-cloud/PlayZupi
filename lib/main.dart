@@ -1,10 +1,8 @@
-
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -309,7 +307,6 @@ class HomeScreen extends StatelessWidget {
 // COMMON BOX DESIGN
 
 BoxDecoration profileBoxDecoration() {
-  // Simple white rounded box matching the supplied reference image.
   return BoxDecoration(
     color: white,
     borderRadius: BorderRadius.circular(25),
@@ -340,11 +337,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Uint8List? dpBytes;
 
   final Map<String, String> countryFlags = const {
-    'United Arab Emirates': '🇦🇪', 'Pakistan': '🇵🇰', 'India': '🇮🇳',
-    'Saudi Arabia': '🇸🇦', 'Bangladesh': '🇧🇩', 'Afghanistan': '🇦🇫',
-    'Nepal': '🇳🇵', 'Sri Lanka': '🇱🇰', 'United Kingdom': '🇬🇧',
-    'United States': '🇺🇸', 'Qatar': '🇶🇦', 'Oman': '🇴🇲',
-    'Kuwait': '🇰🇼', 'Turkey': '🇹🇷', 'Canada': '🇨🇦',
+    'United Arab Emirates': '🇦🇪',
+    'Pakistan': '🇵🇰',
+    'India': '🇮🇳',
+    'Saudi Arabia': '🇸🇦',
+    'Bangladesh': '🇧🇩',
+    'Afghanistan': '🇦🇫',
+    'Nepal': '🇳🇵',
+    'Sri Lanka': '🇱🇰',
+    'United Kingdom': '🇬🇧',
+    'United States': '🇺🇸',
+    'Qatar': '🇶🇦',
+    'Oman': '🇴🇲',
+    'Kuwait': '🇰🇼',
+    'Turkey': '🇹🇷',
+    'Canada': '🇨🇦',
   };
 
   @override
@@ -356,7 +363,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final encodedDp = prefs.getString('profile_dp');
+
     if (!mounted) return;
+
     setState(() {
       username = prefs.getString('profile_name') ?? 'Username';
       if (username.trim().isEmpty) username = 'Username';
@@ -384,16 +393,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: () async {
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const EditProfileScreen(),
+                  ),
                 );
                 loadProfile();
               },
               icon: const Icon(Icons.edit_rounded, size: 17, color: black),
-              label: const Text('Edit Profile', style: TextStyle(color: black, fontWeight: FontWeight.w800)),
+              label: const Text(
+                'Edit Profile',
+                style: TextStyle(
+                  color: black,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: gold, width: 1.5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 17,
+                  vertical: 10,
+                ),
               ),
             ),
           ),
@@ -405,7 +427,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               shape: BoxShape.circle,
               gradient: const LinearGradient(colors: [white, grey]),
               border: Border.all(color: gold, width: 2.5),
-              boxShadow: [BoxShadow(color: black.withOpacity(0.18), blurRadius: 8, offset: const Offset(0, 4))],
+              boxShadow: [
+                BoxShadow(
+                  color: black.withOpacity(0.18),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             clipBehavior: Clip.antiAlias,
             child: dpBytes == null
@@ -418,10 +446,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: black, fontSize: 23, fontWeight: FontWeight.w900),
+            style: const TextStyle(
+              color: black,
+              fontSize: 23,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 6),
-          const Text('ID: 12345678', style: TextStyle(color: Color(0xFF777777), fontSize: 15, fontWeight: FontWeight.w700)),
+          const Text(
+            'ID: 12345678',
+            style: TextStyle(
+              color: Color(0xFF777777),
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           if (showGender || country != null) ...[
             const SizedBox(height: 10),
             Wrap(
@@ -430,14 +469,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
               spacing: 13,
               children: [
                 if (showGender)
-                  Icon(gender == 'Male' ? Icons.male_rounded : Icons.female_rounded, color: genderColor, size: 25),
+                  Icon(
+                    gender == 'Male'
+                        ? Icons.male_rounded
+                        : Icons.female_rounded,
+                    color: genderColor,
+                    size: 25,
+                  ),
                 if (country != null)
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(countryFlags[country] ?? '🌍', style: const TextStyle(fontSize: 21)),
+                      Text(
+                        countryFlags[country] ?? '🌍',
+                        style: const TextStyle(fontSize: 21),
+                      ),
                       const SizedBox(width: 5),
-                      Text(country!, style: const TextStyle(color: black, fontWeight: FontWeight.w700)),
+                      Text(
+                        country!,
+                        style: const TextStyle(
+                          color: black,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ],
                   ),
               ],
@@ -447,23 +501,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
-              child: Text(bio, textAlign: TextAlign.center, style: const TextStyle(color: black, fontSize: 14, height: 1.4)),
+              child: Text(
+                bio,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: black,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
             ),
           ],
           const SizedBox(height: 30),
           Row(
             children: [
               ProfileStat(title: 'Followers', count: '0'),
-              ProfileStatDivider(),
+              const ProfileStatDivider(),
               ProfileStat(title: 'Following', count: '0'),
-              ProfileStatDivider(),
+              const ProfileStatDivider(),
               ProfileStat(title: 'Visitors', count: '0'),
-              ProfileStatDivider(),
+              const ProfileStatDivider(),
               ProfileStat(title: 'Gift', count: '0'),
             ],
           ),
           const SizedBox(height: 15),
-          Container(height: 1, width: double.infinity, color: const Color(0xFFCCCCCC)),
+          Container(
+            height: 1,
+            width: double.infinity,
+            color: const Color(0xFFCCCCCC),
+          ),
         ],
       ),
     );
@@ -482,11 +548,14 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController bioController = TextEditingController();
+
   String? selectedGender;
   String? selectedCountry;
   DateTime? selectedDate;
+
   Uint8List? selectedDpBytes;
   Uint8List? dpPreviewBytes;
+
   String originalName = '';
   DateTime? lastNameChange;
   bool isLoading = true;
@@ -495,17 +564,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final ImagePicker imagePicker = ImagePicker();
 
   final List<String> countries = [
-    'United Arab Emirates', 'Pakistan', 'India', 'Saudi Arabia',
-    'Bangladesh', 'Afghanistan', 'Nepal', 'Sri Lanka', 'United Kingdom',
-    'United States', 'Qatar', 'Oman', 'Kuwait', 'Turkey', 'Canada',
+    'United Arab Emirates',
+    'Pakistan',
+    'India',
+    'Saudi Arabia',
+    'Bangladesh',
+    'Afghanistan',
+    'Nepal',
+    'Sri Lanka',
+    'United Kingdom',
+    'United States',
+    'Qatar',
+    'Oman',
+    'Kuwait',
+    'Turkey',
+    'Canada',
   ];
 
   final Map<String, String> countryFlags = const {
-    'United Arab Emirates': '🇦🇪', 'Pakistan': '🇵🇰', 'India': '🇮🇳',
-    'Saudi Arabia': '🇸🇦', 'Bangladesh': '🇧🇩', 'Afghanistan': '🇦🇫',
-    'Nepal': '🇳🇵', 'Sri Lanka': '🇱🇰', 'United Kingdom': '🇬🇧',
-    'United States': '🇺🇸', 'Qatar': '🇶🇦', 'Oman': '🇴🇲',
-    'Kuwait': '🇰🇼', 'Turkey': '🇹🇷', 'Canada': '🇨🇦',
+    'United Arab Emirates': '🇦🇪',
+    'Pakistan': '🇵🇰',
+    'India': '🇮🇳',
+    'Saudi Arabia': '🇸🇦',
+    'Bangladesh': '🇧🇩',
+    'Afghanistan': '🇦🇫',
+    'Nepal': '🇳🇵',
+    'Sri Lanka': '🇱🇰',
+    'United Kingdom': '🇬🇧',
+    'United States': '🇺🇸',
+    'Qatar': '🇶🇦',
+    'Oman': '🇴🇲',
+    'Kuwait': '🇰🇼',
+    'Turkey': '🇹🇷',
+    'Canada': '🇨🇦',
   };
 
   @override
@@ -519,7 +610,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final savedDob = prefs.getString('profile_dob');
     final encodedDp = prefs.getString('profile_dp');
     final changedAt = prefs.getInt('profile_name_changed_at');
+
     if (!mounted) return;
+
     setState(() {
       originalName = prefs.getString('profile_name') ?? '';
       nameController.text = originalName;
@@ -549,142 +642,177 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       firstDate: DateTime(1950),
       lastDate: DateTime.now(),
     );
-    if (date != null) setState(() => selectedDate = date);
+
+    if (date != null && mounted) {
+      setState(() => selectedDate = date);
+    }
   }
 
   Future<void> chooseDp() async {
-  try {
-    final picked = await imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 90,
-      maxWidth: 1024,
-      maxHeight: 1024,
-    );
+    try {
+      final picked = await imagePicker.pickImage(
+        source: ImageSource.gallery,
+      );
 
-    if (picked == null || !mounted) return;
+      if (picked == null || !mounted) return;
 
-    final cropped = await ImageCropper().cropImage(
-      sourcePath: picked.path,
-      aspectRatio: const CropAspectRatio(
-        ratioX: 1,
-        ratioY: 1,
-      ),
-      compressQuality: 90,
-      uiSettings: [
-        AndroidUiSettings(
-          toolbarTitle: 'Crop Profile Photo',
-          toolbarColor: black,
-          toolbarWidgetColor: white,
-          activeControlsWidgetColor: gold,
-          lockAspectRatio: true,
+      final bytes = await picked.readAsBytes();
+
+      if (bytes.isEmpty || !mounted) return;
+
+      setState(() {
+        dpPreviewBytes = bytes;
+      });
+    } catch (e) {
+      debugPrint('DP selection error: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to load photo. Please try again.'),
         ),
-        IOSUiSettings(
-          title: 'Crop Profile Photo',
-          aspectRatioLockEnabled: true,
-        ),
-      ],
-    );
-
-    if (cropped == null || !mounted) return;
-
-    final bytes = await cropped.readAsBytes();
-
-    if (!mounted) return;
-
-    setState(() {
-      dpPreviewBytes = bytes;
-    });
-  } catch (e) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Could not select photo: $e')),
-    );
+      );
+    }
   }
-}
 
   void showComingSoon(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$title coming soon'), behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text('$title coming soon"),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
   Future<void> saveProfile() async {
     if (isSaving) return;
+
     final newName = nameController.text.trim();
     final newBio = bioController.text.trim();
-    final words = newBio.isEmpty ? 0 : newBio.split(RegExp(r'\s+')).length;
+    final words = newBio.isEmpty
+        ? 0
+        : newBio.split(RegExp(r'\s+')).length;
 
     if (newName.length > 30) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name can be up to 30 characters.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Name can be up to 30 characters.'),
+        ),
+      );
       return;
     }
+
     if (words > 200) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bio can contain up to 200 words.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bio can contain up to 200 words.'),
+        ),
+      );
       return;
     }
 
     final bool nameChanged = newName != originalName;
+
     if (nameChanged && lastNameChange != null) {
-      final remaining = const Duration(hours: 24) - DateTime.now().difference(lastNameChange!);
+      final remaining = const Duration(hours: 24) -
+          DateTime.now().difference(lastNameChange!);
+
       if (remaining > Duration.zero) {
         final hours = remaining.inHours;
         final minutes = remaining.inMinutes.remainder(60);
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('You can change your name again in ${hours}h ${minutes}m.')),
+          SnackBar(
+            content: Text(
+              'You can change your name again in ${hours}h ${minutes}m.',
+            ),
+          ),
         );
         return;
       }
     }
 
     setState(() => isSaving = true);
+
     try {
       final prefs = await SharedPreferences.getInstance();
+
       await prefs.setString('profile_name', newName);
       await prefs.setString('profile_bio', newBio);
+
       if (selectedGender == null) {
         await prefs.remove('profile_gender');
       } else {
         await prefs.setString('profile_gender', selectedGender!);
       }
+
       if (selectedCountry == null) {
         await prefs.remove('profile_country');
       } else {
         await prefs.setString('profile_country', selectedCountry!);
       }
+
       if (selectedDate == null) {
         await prefs.remove('profile_dob');
       } else {
-        await prefs.setString('profile_dob', selectedDate!.toIso8601String());
+        await prefs.setString(
+          'profile_dob',
+          selectedDate!.toIso8601String(),
+        );
       }
+
       if (selectedDpBytes == null) {
         await prefs.remove('profile_dp');
       } else {
-        await prefs.setString('profile_dp', base64Encode(selectedDpBytes!));
+        await prefs.setString(
+          'profile_dp',
+          base64Encode(selectedDpBytes!),
+        );
       }
+
       if (nameChanged) {
-        await prefs.setInt('profile_name_changed_at', DateTime.now().millisecondsSinceEpoch);
+        await prefs.setInt(
+          'profile_name_changed_at',
+          DateTime.now().millisecondsSinceEpoch,
+        );
       }
+
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile saved successfully!')),
+        const SnackBar(
+          content: Text('Profile saved successfully!'),
+        ),
       );
+
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Save failed: $e')),
+      );
     } finally {
-      if (mounted) setState(() => isSaving = false);
+      if (mounted) {
+        setState(() => isSaving = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: gold)));
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: gold),
+        ),
+      );
     }
+
     final bool nameLocked = lastNameChange != null &&
-        DateTime.now().difference(lastNameChange!) < const Duration(hours: 24);
+        DateTime.now().difference(lastNameChange!) <
+            const Duration(hours: 24);
 
     return Scaffold(
       backgroundColor: white,
@@ -693,146 +821,173 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         foregroundColor: black,
         elevation: 0,
         centerTitle: true,
-        title: const Text('Edit Profile', style: TextStyle(color: black, fontWeight: FontWeight.w900)),
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(
+            color: black,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [white, Color(0xFFF7F7F7), Color(0xFFE1E1E1)]),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              white,
+              Color(0xFFF7F7F7),
+              Color(0xFFE1E1E1),
+            ],
+          ),
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(18, 15, 18, 30),
           child: Column(
             children: [
+              // PROFILE PHOTO
+
               Container(
-  width: double.infinity,
-  margin: const EdgeInsets.only(bottom: 22),
-  padding: const EdgeInsets.all(18),
-  decoration: profileBoxDecoration(),
-  child: Column(
-    children: [
-      Row(
-        children: [
-          Container(
-            width: 68,
-            height: 68,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: gold, width: 2),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: (dpPreviewBytes ?? selectedDpBytes) == null
-                ? const Icon(Icons.person, size: 40, color: black)
-                : Image.memory(
-                    dpPreviewBytes ?? selectedDpBytes!,
-                    fit: BoxFit.cover,
-                  ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Profile Photo',
-                  style: TextStyle(
-                    color: black,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 42,
-                  child: ElevatedButton.icon(
-                    onPressed: chooseDp,
-                    icon: const Icon(Icons.camera_alt_rounded, color: black),
-                    label: const Text(
-                      'Change DP',
-                      style: TextStyle(
-                        color: black,
-                        fontWeight: FontWeight.w800,
-                      ),
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 22),
+                padding: const EdgeInsets.all(18),
+                decoration: profileBoxDecoration(),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 68,
+                          height: 68,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: gold, width: 2),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: (dpPreviewBytes ?? selectedDpBytes) == null
+                              ? const Icon(
+                                  Icons.person,
+                                  size: 40,
+                                  color: black,
+                                )
+                              : Image.memory(
+                                  dpPreviewBytes ?? selectedDpBytes!,
+                                  fit: BoxFit.cover,
+                                ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Profile Photo',
+                                style: TextStyle(
+                                  color: black,
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                height: 42,
+                                child: ElevatedButton.icon(
+                                  onPressed: chooseDp,
+                                  icon: const Icon(
+                                    Icons.camera_alt_rounded,
+                                    color: black,
+                                  ),
+                                  label: const Text(
+                                    'Change DP',
+                                    style: TextStyle(
+                                      color: black,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: gold,
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(13),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: gold,
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(13),
+
+                    if (dpPreviewBytes != null) ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Confirm your new profile photo',
+                        style: TextStyle(
+                          color: black,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      if (dpPreviewBytes != null) ...[
-        const SizedBox(height: 16),
-        const Text(
-          'Confirm your new profile photo',
-          style: TextStyle(
-            color: black,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    selectedDpBytes = dpPreviewBytes;
-                    dpPreviewBytes = null;
-                  });
-                },
-                icon: const Icon(Icons.check, color: white),
-                label: const Text(
-                  'Confirm',
-                  style: TextStyle(
-                    color: white,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF218838),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13),
-                  ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  selectedDpBytes = dpPreviewBytes;
+                                  dpPreviewBytes = null;
+                                });
+                              },
+                              icon: const Icon(Icons.check, color: white),
+                              label: const Text(
+                                'Confirm',
+                                style: TextStyle(
+                                  color: white,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF218838),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  dpPreviewBytes = null;
+                                });
+                              },
+                              icon: const Icon(Icons.close, color: white),
+                              label: const Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  color: white,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFC62828),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    dpPreviewBytes = null;
-                  });
-                },
-                icon: const Icon(Icons.close, color: white),
-                label: const Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: white,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC62828),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    ],
-  ),
-),
+
+              // CHANGE NAME
+
               ProfileInputBox(
                 title: 'Change Name',
                 icon: Icons.person_rounded,
@@ -840,17 +995,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   controller: nameController,
                   readOnly: nameLocked,
                   maxLength: 30,
-                  inputFormatters: [LengthLimitingTextInputFormatter(30)],
-                  style: const TextStyle(color: black, fontWeight: FontWeight.w700),
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(30),
+                  ],
+                  style: const TextStyle(
+                    color: black,
+                    fontWeight: FontWeight.w700,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Enter your name',
                     border: InputBorder.none,
                     counterText: '',
-                    helperText: nameLocked ? 'Name change available after 24 hours' : 'Maximum 30 characters',
-                    hintStyle: const TextStyle(color: Color(0xFF999999)),
+                    helperText: nameLocked
+                        ? 'Name change available after 24 hours'
+                        : 'Maximum 30 characters',
+                    hintStyle: const TextStyle(
+                      color: Color(0xFF999999),
+                    ),
                   ),
                 ),
               ),
+
+              // BIO
+
               ProfileInputBox(
                 title: 'Bio (up to 200 words)',
                 icon: Icons.description_rounded,
@@ -858,8 +1025,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   controller: bioController,
                   maxLines: 5,
                   minLines: 3,
-                  inputFormatters: [const MaxWordsInputFormatter(200)],
-                  style: const TextStyle(color: black, fontWeight: FontWeight.w700),
+                  inputFormatters: [
+                    const MaxWordsInputFormatter(200),
+                  ],
+                  style: const TextStyle(
+                    color: black,
+                    fontWeight: FontWeight.w700,
+                  ),
                   decoration: const InputDecoration(
                     hintText: 'Write something about yourself (maximum 200 words)',
                     border: InputBorder.none,
@@ -867,30 +1039,85 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
               ),
+
+              // GENDER
+
               ProfileInputBox(
                 title: 'Gender',
                 icon: Icons.wc_rounded,
                 child: Row(
                   children: [
-                    Expanded(child: GenderChoice(title: 'Male', icon: Icons.male_rounded, color: const Color(0xFF2585E8), selected: selectedGender == 'Male', onTap: () => setState(() => selectedGender = 'Male'))),
+                    Expanded(
+                      child: GenderChoice(
+                        title: 'Male',
+                        icon: Icons.male_rounded,
+                        color: const Color(0xFF2585E8),
+                        selected: selectedGender == 'Male',
+                        onTap: () => setState(
+                          () => selectedGender = 'Male',
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: GenderChoice(title: 'Female', icon: Icons.female_rounded, color: const Color(0xFFE85A9B), selected: selectedGender == 'Female', onTap: () => setState(() => selectedGender = 'Female'))),
+                    Expanded(
+                      child: GenderChoice(
+                        title: 'Female',
+                        icon: Icons.female_rounded,
+                        color: const Color(0xFFE85A9B),
+                        selected: selectedGender == 'Female',
+                        onTap: () => setState(
+                          () => selectedGender = 'Female',
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: GenderChoice(title: 'None', icon: Icons.remove_circle_outline_rounded, color: const Color(0xFF888888), selected: selectedGender == 'None', onTap: () => setState(() => selectedGender = 'None'))),
+                    Expanded(
+                      child: GenderChoice(
+                        title: 'None',
+                        icon: Icons.remove_circle_outline_rounded,
+                        color: const Color(0xFF888888),
+                        selected: selectedGender == 'None',
+                        onTap: () => setState(
+                          () => selectedGender = 'None',
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
+
+              // DATE OF BIRTH
+
               ProfileInputBox(
                 title: 'Date of Birth',
                 icon: Icons.calendar_month_rounded,
                 child: Row(
                   children: [
-                    Expanded(child: DatePartChoice(title: selectedDate == null ? 'Date' : '${selectedDate!.day}/${selectedDate!.month}', icon: Icons.calendar_today_rounded, onTap: chooseDate)),
+                    Expanded(
+                      child: DatePartChoice(
+                        title: selectedDate == null
+                            ? 'Date'
+                            : '${selectedDate!.day}/${selectedDate!.month}',
+                        icon: Icons.calendar_today_rounded,
+                        onTap: chooseDate,
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(child: DatePartChoice(title: selectedDate == null ? 'Year' : '${selectedDate!.year}', icon: Icons.event_rounded, onTap: chooseDate)),
+                    Expanded(
+                      child: DatePartChoice(
+                        title: selectedDate == null
+                            ? 'Year'
+                            : '${selectedDate!.year}',
+                        icon: Icons.event_rounded,
+                        onTap: chooseDate,
+                      ),
+                    ),
                   ],
                 ),
               ),
+
+              // COUNTRY
+
               ProfileInputBox(
                 title: 'Country',
                 icon: Icons.public_rounded,
@@ -898,97 +1125,131 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: DropdownButton<String>(
                     value: selectedCountry,
                     isExpanded: true,
-                    hint: const Text('Select Country', style: TextStyle(color: Color(0xFF999999))),
-                    items: countries.map((country) => DropdownMenuItem(
-                      value: country,
-                      child: Row(children: [Text(countryFlags[country] ?? '🌍', style: const TextStyle(fontSize: 20)), const SizedBox(width: 9), Expanded(child: Text(country, overflow: TextOverflow.ellipsis))]),
-                    )).toList(),
-                    onChanged: (value) => setState(() => selectedCountry = value),
+                    hint: const Text(
+                      'Select Country',
+                      style: TextStyle(color: Color(0xFF999999)),
+                    ),
+                    items: countries.map((country) {
+                      return DropdownMenuItem(
+                        value: country,
+                        child: Row(
+                          children: [
+                            Text(
+                              countryFlags[country] ?? '🌍',
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                            const SizedBox(width: 9),
+                            Expanded(
+                              child: Text(
+                                country,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() => selectedCountry = value);
+                    },
                   ),
                 ),
               ),
+
+              // SAVE BUTTON (MOVED HERE)
+
+              const SizedBox(height: 8),
+
+              SizedBox(
+                width: double.infinity,
+                height: 58,
+                child: ElevatedButton.icon(
+                  onPressed: isSaving ? null : saveProfile,
+                  icon: const Icon(
+                    Icons.save_rounded,
+                    color: black,
+                  ),
+                  label: Text(
+                    isSaving ? 'Saving...' : 'Save',
+                    style: const TextStyle(
+                      color: black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: gold,
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 25),
+
+              // PROFILE COLLECTION
+
+              const ProfileSectionHeading(
+                title: 'Profile Collection',
+              ),
+
+              EditProfileOption(
+                title: 'Frame',
+                icon: Icons.crop_square_rounded,
+                onTap: () => showComingSoon('Frame'),
+              ),
+
+              EditProfileOption(
+                title: 'Teams',
+                icon: Icons.groups_rounded,
+                onTap: () => showComingSoon('Teams'),
+              ),
+
+              EditProfileOption(
+                title: 'Ornament',
+                icon: Icons.auto_awesome_rounded,
+                onTap: () => showComingSoon('Ornament'),
+              ),
+
               const SizedBox(height: 12),
-const ProfileSectionHeading(title: 'Profile Collection'),
 
-EditProfileOption(
-  title: 'Frame',
-  icon: Icons.crop_square_rounded,
-  onTap: () => showComingSoon('Frame'),
-),
+              // BADGES
 
-EditProfileOption(
-  title: 'Teams',
-  icon: Icons.groups_rounded,
-  onTap: () => showComingSoon('Teams'),
-),
+              const ProfileSectionHeading(
+                title: 'Badges',
+              ),
 
-EditProfileOption(
-  title: 'Ornament',
-  icon: Icons.auto_awesome_rounded,
-  onTap: () => showComingSoon('Ornament'),
-),
+              EditProfileOption(
+                title: 'Entry',
+                icon: Icons.login_rounded,
+                onTap: () => showComingSoon('Entry'),
+              ),
 
-const SizedBox(height: 12),
-const ProfileSectionHeading(title: 'Badges'),
+              EditProfileOption(
+                title: 'Crown',
+                icon: Icons.workspace_premium_rounded,
+                onTap: () => showComingSoon('Crown'),
+              ),
 
-EditProfileOption(
-  title: 'Entry',
-  icon: Icons.login_rounded,
-  onTap: () => showComingSoon('Entry'),
-),
+              EditProfileOption(
+                title: 'Game Badge',
+                icon: Icons.sports_esports_rounded,
+                onTap: () => showComingSoon('Game Badge'),
+              ),
 
-EditProfileOption(
-  title: 'Crown',
-  icon: Icons.workspace_premium_rounded,
-  onTap: () => showComingSoon('Crown'),
-),
+              EditProfileOption(
+                title: 'Money Badge',
+                icon: Icons.paid_rounded,
+                onTap: () => showComingSoon('Money Badge'),
+              ),
 
-EditProfileOption(
-  title: 'Game Badge',
-  icon: Icons.sports_esports_rounded,
-  onTap: () => showComingSoon('Game Badge'),
-),
-
-EditProfileOption(
-  title: 'Money Badge',
-  icon: Icons.paid_rounded,
-  onTap: () => showComingSoon('Money Badge'),
-),
-
-EditProfileOption(
-  title: 'Gift Badge',
-  icon: Icons.card_giftcard_rounded,
-  onTap: () => showComingSoon('Gift Badge'),
-),
-
-const SizedBox(height: 8),
-
-SizedBox(
-  width: double.infinity,
-  height: 58,
-  child: ElevatedButton.icon(
-    onPressed: isSaving ? null : saveProfile,
-    icon: const Icon(
-      Icons.save_rounded,
-      color: black,
-    ),
-    label: Text(
-      isSaving ? 'Saving...' : 'Save',
-      style: const TextStyle(
-        color: black,
-        fontSize: 18,
-        fontWeight: FontWeight.w900,
-      ),
-    ),
-    style: ElevatedButton.styleFrom(
-      backgroundColor: gold,
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-      ),
-    ),
-  ),
-),
+              EditProfileOption(
+                title: 'Gift Badge',
+                icon: Icons.card_giftcard_rounded,
+                onTap: () => showComingSoon('Gift Badge'),
+              ),
             ],
           ),
         ),
@@ -997,18 +1258,26 @@ SizedBox(
   }
 }
 
+// MAX WORDS FORMATTER
+
 class MaxWordsInputFormatter extends TextInputFormatter {
   final int maxWords;
 
   const MaxWordsInputFormatter(this.maxWords);
 
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final text = newValue.text.trim();
     final words = text.isEmpty ? 0 : text.split(RegExp(r'\s+')).length;
+
     return words <= maxWords ? newValue : oldValue;
   }
 }
+
+// GENDER CHOICE
 
 class GenderChoice extends StatelessWidget {
   final String title;
@@ -1017,7 +1286,14 @@ class GenderChoice extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const GenderChoice({super.key, required this.title, required this.icon, required this.color, required this.selected, required this.onTap});
+  const GenderChoice({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1026,17 +1302,32 @@ class GenderChoice extends StatelessWidget {
       borderRadius: BorderRadius.circular(13),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        padding: const EdgeInsets.symmetric(
+          vertical: 12,
+          horizontal: 4,
+        ),
         decoration: BoxDecoration(
           color: selected ? color.withOpacity(0.12) : const Color(0xFFF7F7F7),
           borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: selected ? color : const Color(0xFFE2E2E2), width: selected ? 1.6 : 1),
+          border: Border.all(
+            color: selected ? color : const Color(0xFFE2E2E2),
+            width: selected ? 1.6 : 1,
+          ),
         ),
         child: Column(
           children: [
             Icon(icon, color: color, size: 25),
             const SizedBox(height: 4),
-            FittedBox(child: Text(title, style: const TextStyle(color: black, fontSize: 12, fontWeight: FontWeight.w800))),
+            FittedBox(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1044,12 +1335,19 @@ class GenderChoice extends StatelessWidget {
   }
 }
 
+// DATE CHOICE
+
 class DatePartChoice extends StatelessWidget {
   final String title;
   final IconData icon;
   final VoidCallback onTap;
 
-  const DatePartChoice({super.key, required this.title, required this.icon, required this.onTap});
+  const DatePartChoice({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1057,18 +1355,32 @@ class DatePartChoice extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(13),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
+        padding: const EdgeInsets.symmetric(
+          vertical: 13,
+          horizontal: 10,
+        ),
         decoration: BoxDecoration(
           color: const Color(0xFFF7F7F7),
           borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: const Color(0xFFE2E2E2)),
+          border: Border.all(
+            color: const Color(0xFFE2E2E2),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: gold, size: 19),
             const SizedBox(width: 7),
-            Flexible(child: Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(color: black, fontWeight: FontWeight.w800))),
+            Flexible(
+              child: Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: black,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1529,7 +1841,7 @@ class OtherTabScreen extends StatelessWidget {
   }
 }
 
-
+// PROFILE STAT
 
 class ProfileStat extends StatelessWidget {
   final String title;
@@ -1569,6 +1881,8 @@ class ProfileStat extends StatelessWidget {
   }
 }
 
+// PROFILE STAT DIVIDER
+
 class ProfileStatDivider extends StatelessWidget {
   const ProfileStatDivider({super.key});
 
@@ -1581,5 +1895,4 @@ class ProfileStatDivider extends StatelessWidget {
     );
   }
 }
-
-
+  
