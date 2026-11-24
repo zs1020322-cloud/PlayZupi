@@ -1296,6 +1296,7 @@ class _DpCropScreenState extends State<DpCropScreen> {
   double _baseHeight = 0;
   Offset _offset = Offset.zero;
   Offset _startOffset = Offset.zero;
+  Offset _startFocal = Offset.zero;
   double _viewportSide = 0;
   bool _loading = true;
   bool _saving = false;
@@ -1349,15 +1350,19 @@ class _DpCropScreenState extends State<DpCropScreen> {
   void _onScaleStart(ScaleStartDetails details) {
     _startZoom = _zoom;
     _startOffset = _offset;
+    _startFocal = details.localFocalPoint;
   }
 
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
     final nextZoom = (_startZoom * details.scale).clamp(1.0, 4.0).toDouble();
     final center = Offset(_viewportSide / 2, _viewportSide / 2);
-    final focal = details.localFocalPoint - center;
+    final startFromCenter = _startFocal - center;
+    final currentFromCenter = details.localFocalPoint - center;
     final scaleChange = nextZoom / _startZoom;
-    final nextOffset = _startOffset + details.focalPointDelta + (focal * (1 - scaleChange));
+    // Keep the photo anchored to the pinch focal point while zooming;
+    // when using one finger, scaleChange is 1 and this becomes smooth dragging.
+    final nextOffset = _startOffset + currentFromCenter - (startFromCenter * scaleChange);
     setState(() {
       _zoom = nextZoom;
       _offset = _clampOffset(nextOffset, nextZoom);
