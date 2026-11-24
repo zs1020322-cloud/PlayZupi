@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:image_cropper/image_cropper.dart';
 
 void main() {
   runApp(const PlayZupiApp());
@@ -635,86 +636,47 @@ void initState() {
 Future<void> recoverLostDp() async {
   try {
     final response = await imagePicker.retrieveLostData();
-
     if (response.isEmpty || !mounted) return;
-
     final file = response.files?.first;
     if (file == null) return;
-
-    final bytes = await file.readAsBytes();
-
-    if (bytes.isEmpty || !mounted) return;
-
-    setState(() {
-      dpPreviewBytes = bytes;
-    });
+    await cropAndPreview(file.path);
   } catch (e) {
     debugPrint('DP recovery error: $e');
   }
 }
-  
-
-  @override
-  void dispose() {
-    nameController.dispose();
-    bioController.dispose();
-    super.dispose();
-  }
-
-  Future<void> chooseDate() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: selectedDate ?? DateTime(2005, 1, 1),
-      firstDate: DateTime(1950),
-      lastDate: DateTime.now(),
-    );
-
-    if (date != null && mounted) {
-      setState(() => selectedDate = date);
-    }
-  }
 
 Future<void> chooseDp() async {
   try {
     final picked = await imagePicker.pickImage(
       source: ImageSource.gallery,
+      imageQuality: 95,
     );
-
     if (picked == null || !mounted) return;
-
-    final cropped = await ImageCropper().cropImage(
-      sourcePath: picked.path,
-      uiSettings: [
-        AndroidUiSettings(
-          toolbarTitle: 'Crop Profile Photo',
-          toolbarColor: const Color(0xFFFFC83D),
-          toolbarWidgetColor: Colors.black,
-          lockAspectRatio: false,
-        ),
-        IOSUiSettings(
-          title: 'Crop Profile Photo',
-        ),
-      ],
-    );
-
-    if (cropped == null || !mounted) return;
-
-    final bytes = await cropped.readAsBytes();
-
-    if (bytes.isEmpty || !mounted) return;
-
-    setState(() {
-      dpPreviewBytes = bytes;
-    });
+    await cropAndPreview(picked.path);
   } catch (e) {
-    debugPrint('DP crop error: $e');
-
+    debugPrint('DP picker error: $e');
     if (!mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Unable to crop photo. Please try again.'),
-      ),
+      const SnackBar(content: Text('Unable to open photo. Please try again.')),
+    );
+  }
+}
+
+
+Future<void> cropAndPreview(String path) async {
+  if (!mounted) return;
+  try {
+    final croppedBytes = await Navigator.push<Uint8List>(
+      context,
+      MaterialPageRoute(builder: (_) => DpCropScreen(imagePath: path)),
+    );
+    if (croppedBytes == null || croppedBytes.isEmpty || !mounted) return;
+    setState(() => dpPreviewBytes = croppedBytes);
+  } catch (e) {
+    debugPrint('DP crop screen error: $e');
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Unable to crop photo. Please try again.')),
     );
   }
 }
@@ -1241,19 +1203,19 @@ Future<void> chooseDp() async {
               EditProfileOption(
                 title: 'Frame',
                 icon: Icons.crop_square_rounded,
-                onTap: () => showComingSoon('Frame'),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DpCollectionScreen(kind: DpCollectionKind.frames))),
               ),
 
               EditProfileOption(
-                title: 'Teams',
-                icon: Icons.groups_rounded,
-                onTap: () => showComingSoon('Teams'),
+                title: 'Themes',
+                icon: Icons.wallpaper_rounded,
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DpCollectionScreen(kind: DpCollectionKind.themes))),
               ),
 
               EditProfileOption(
                 title: 'Ornament',
                 icon: Icons.auto_awesome_rounded,
-                onTap: () => showComingSoon('Ornament'),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DpCollectionScreen(kind: DpCollectionKind.ornaments))),
               ),
 
               const SizedBox(height: 12),
@@ -1300,6 +1262,303 @@ Future<void> chooseDp() async {
     );
   }
 }
+
+// DP CROP SCREEN (LOCAL UI; NO EXTERNAL CROP ACTIVITY)
+class DpCropScreen extends StatefulWidget {
+  final String imagePath;
+  const DpCropScreen({super.key, required this.imagePath});
+
+  @override
+  State<DpCropScreen> createState() => _DpCropScreenState();
+}
+
+
+class _DpCropScreenState extends State<DpCropScreen> {
+  final GlobalKey _cropKey = GlobalKey();
+  double _imageWidth = 300;
+  double _imageHeight = 300;
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _prepareImage();
+  }
+
+  Future<void> _prepareImage() async {
+    try {
+      final bytes = await File(widget.imagePath).readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final image = frame.image;
+      final width = image.width.toDouble();
+      final height = image.height.toDouble();
+      const viewport = 300.0;
+      final ratio = width / height;
+      if (!mounted) return;
+      setState(() {
+        if (ratio >= 1) {
+          _imageWidth = viewport * ratio;
+          _imageHeight = viewport;
+        } else {
+          _imageWidth = viewport;
+          _imageHeight = viewport / ratio;
+        }
+        _loading = false;
+      });
+      image.dispose();
+      codec.dispose();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'This photo could not be opened.';
+      });
+    }
+  }
+
+  Future<void> _confirmCrop() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final boundary = _cropKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) throw StateError('Crop preview is not ready');
+      final image = await boundary.toImage(pixelRatio: 2);
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      final bytes = data?.buffer.asUint8List();
+      if (bytes == null || bytes.isEmpty) throw StateError('Crop export failed');
+      if (!mounted) return;
+      Navigator.pop(context, bytes);
+    } catch (e) {
+      debugPrint('Crop export error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Crop failed. Please adjust and try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF111111),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF111111),
+        foregroundColor: white,
+        title: const Text('Crop Profile Photo', style: TextStyle(fontWeight: FontWeight.w800)),
+        actions: [
+          TextButton(
+            onPressed: _loading || _saving || _error != null ? null : _confirmCrop,
+            child: Text(_saving ? 'Saving...' : 'Done', style: const TextStyle(color: gold, fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Center(
+          child: _loading
+              ? const CircularProgressIndicator(color: gold)
+              : _error != null
+                  ? Text(_error!, style: const TextStyle(color: white))
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        RepaintBoundary(
+                          key: _cropKey,
+                          child: SizedBox(
+                            width: 300,
+                            height: 300,
+                            child: ClipRect(
+                              child: InteractiveViewer(
+                                constrained: false,
+                                minScale: 1,
+                                maxScale: 4,
+                                boundaryMargin: const EdgeInsets.all(0),
+                                child: SizedBox(
+                                  width: _imageWidth,
+                                  height: _imageHeight,
+                                  child: Image.file(File(widget.imagePath), fit: BoxFit.fill),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text('Pinch to zoom • Drag to adjust', style: TextStyle(color: white, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: 300,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: const Color(0xFF242424), borderRadius: BorderRadius.circular(14), border: Border.all(color: gold)),
+                          child: const Text('Move and zoom the photo inside the square. The visible square becomes your DP.', textAlign: TextAlign.center, style: TextStyle(color: white, height: 1.35)),
+                        ),
+                      ],
+                    ),
+        ),
+      ),
+    );
+  }
+}
+
+
+// DP COLLECTION CATALOGS
+const List<String> dpFrameNames = [
+  'Celestial Halo','Aurora Veil','Velvet Eclipse','Crystal Haven','Royal Aether','Lunar Crest','Opal Cascade','Mystic Bloom','Stardust Relic','Golden Reverie',
+  'Sapphire Embrace','Eternal Frost','Phoenix Aura','Diamond Solstice','Twilight Seraph','Imperial Mirage','Radiant Arc','Nebula Crown','Enchanted Ivy','Cosmic Sanctuary',
+  'Silver Whisper','Amber Majesty','Scarlet Horizon','Celestial Garden','Frosted Elegance','Astral Symphony','Moonlit Palace','Prism Sanctuary','Heavenly Echo','Obsidian Grace',
+  'Aurora Symphony','Emerald Dynasty','Mystic Aurora','Dawn of Glory','Sapphire Tempest','Velvet Sanctuary','Crystal Monarch','Radiant Blossom','Starborn Legacy','Twilight Garden',
+  'Golden Solstice','Ethereal Charm','Lunar Majesty','Infinity Bloom','Royal Stardust','Cosmic Jewel','Frostfall Dream','Heaven\'s Embrace','Arcane Radiance','Eternal Blossom',
+];
+const List<String> dpThemeNames = [
+  'Sakura Dreamscape','Midnight Ocean','Desert Mirage','Arctic Serenity','Neon Metropolis','Rosewood Garden','Galaxy Drift','Autumn Whispers','Oceanic Breeze','Lavender Skies',
+  'Crimson Rain','Emerald Forest','Cloud Kingdom','Starlit Desert','Cherry Blossom Path','Frozen Aurora','Sunset Boulevard','Tropical Paradise','Moonstone Valley','Cosmic Nebula',
+  'Golden Dunes','Misty Highlands','Blue Lagoon','Dreamy Pastel','Shadow Realm','Celestial Voyage','Rainy Tokyo','Wildflower Meadow','Silver Moonlight','Enchanted Waterfall',
+  'Phoenix Valley','Winter Wonderland','Crystal Mountains','Mystic River','Heavenly Clouds','Twilight Forest','Solar Flare','Butterfly Haven','Starry Nightfall','Velvet Sunset',
+];
+const List<String> dpOrnamentNames = [
+  'Feathered Grace','Azure Wings','Blooming Vine','Frost Petals','Solar Feathers','Moonbeam Tassel','Crystal Leaves','Whispering Wings','Rosevine Trail','Stardrop Charm',
+  'Golden Filigree','Arctic Branch','Butterfly Drift','Celestial Ribbon','Emerald Tendrils','Diamond Sprig','Velvet Plumes','Mystic Lantern','Aurora Branches','Phoenix Feathers',
+  'Floral Whirl','Sapphire Strings','Ivy Spiral','Snowflake Trail','Angelic Plumes','Cosmic Threads','Blossom Cascade','Radiant Arrows','Twilight Petals','Silver Fern',
+];
+
+enum DpCollectionKind { frames, themes, ornaments }
+
+class DpCollectionScreen extends StatefulWidget {
+  final DpCollectionKind kind;
+  const DpCollectionScreen({super.key, required this.kind});
+
+  @override
+  State<DpCollectionScreen> createState() => _DpCollectionScreenState();
+}
+
+
+class _DpCollectionScreenState extends State<DpCollectionScreen> {
+  int selected = -1;
+
+  String get heading => switch (widget.kind) {
+    DpCollectionKind.frames => 'DP Frames',
+    DpCollectionKind.themes => 'DP Themes',
+    DpCollectionKind.ornaments => 'DP Ornaments',
+  };
+  List<String> get names => switch (widget.kind) {
+    DpCollectionKind.frames => dpFrameNames,
+    DpCollectionKind.themes => dpThemeNames,
+    DpCollectionKind.ornaments => dpOrnamentNames,
+  };
+  final List<Color> colors = const [
+    Color(0xFFB98722), Color(0xFF7B5BD6), Color(0xFF1F91C8), Color(0xFFE15C91),
+    Color(0xFF3D9B72), Color(0xFFCC5739), Color(0xFF6074C9), Color(0xFF9A6B4C),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: white,
+      appBar: AppBar(
+        backgroundColor: white,
+        foregroundColor: black,
+        centerTitle: true,
+        title: Text(heading, style: const TextStyle(fontWeight: FontWeight.w900)),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: const Color(0xFFFFF6D9), borderRadius: BorderRadius.circular(16), border: Border.all(color: gold)),
+              child: Text('${names.length} designs • UI preview only', textAlign: TextAlign.center, style: const TextStyle(color: black, fontWeight: FontWeight.w800)),
+            ),
+          ),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 18),
+              itemCount: names.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.78),
+              itemBuilder: (context, index) {
+                final accent = colors[index % colors.length];
+                final isSelected = selected == index;
+                return InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => setState(() => selected = index),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(color: isSelected ? const Color(0xFFFFF4D3) : white, borderRadius: BorderRadius.circular(16), border: Border.all(color: isSelected ? gold : const Color(0xFFE0E0E0), width: isSelected ? 2 : 1), boxShadow: [BoxShadow(color: black.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2))]),
+                    child: Column(
+                      children: [
+                        Expanded(child: _catalogPreview(kind: widget.kind, index: index, accent: accent)),
+                        const SizedBox(height: 6),
+                        Text(names[index], maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(color: black, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                        if (isSelected) const Padding(padding: EdgeInsets.only(top: 2), child: Icon(Icons.check_circle, size: 14, color: Color(0xFF218838))),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          if (selected >= 0)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              decoration: const BoxDecoration(color: white, border: Border(top: BorderSide(color: Color(0xFFE1E1E1)))),
+              child: Text('Selected: ${names[selected]}  •  Preview only', textAlign: TextAlign.center, style: const TextStyle(color: black, fontWeight: FontWeight.w800)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _catalogPreview({required DpCollectionKind kind, required int index, required Color accent}) {
+    if (kind == DpCollectionKind.themes) {
+      final other = colors[(index + 3) % colors.length];
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), gradient: LinearGradient(colors: [accent.withOpacity(0.85), other.withOpacity(0.8), const Color(0xFF202033)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+        child: Stack(children: [Positioned(right: -8, top: -8, child: Icon(Icons.blur_on, size: 54, color: white.withOpacity(0.18))), Center(child: Icon([Icons.nightlight_round, Icons.water, Icons.landscape, Icons.ac_unit, Icons.location_city, Icons.local_florist, Icons.auto_awesome][index % 7], color: white, size: 28))]),
+      );
+    }
+    if (kind == DpCollectionKind.ornaments) {
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(color: const Color(0xFFF7F7F7), borderRadius: BorderRadius.circular(12)),
+        child: Stack(alignment: Alignment.center, children: [
+          Container(width: 45, height: 45, decoration: BoxDecoration(shape: BoxShape.circle, color: white, border: Border.all(color: const Color(0xFFCCCCCC)))),
+          Positioned(left: 5, top: 7 + (index % 3) * 3, child: Icon([Icons.eco, Icons.auto_awesome, Icons.local_florist, Icons.flutter_dash, Icons.waves][index % 5], color: accent, size: 19)),
+          Positioned(right: 5, bottom: 7 + (index % 3) * 3, child: Icon([Icons.star, Icons.spa, Icons.diamond, Icons.brightness_5, Icons.park][(index + 2) % 5], color: accent.withOpacity(0.8), size: 17)),
+        ]),
+      );
+    }
+    final ringWidth = 1.5 + (index % 4) * 0.7;
+    final ringStyle = index % 3;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(color: const Color(0xFFF8F8F8), borderRadius: BorderRadius.circular(12)),
+      child: Center(
+        child: Container(
+          width: 54,
+          height: 54,
+          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: accent, width: ringWidth, style: ringStyle == 1 ? BorderStyle.none : BorderStyle.solid), boxShadow: [BoxShadow(color: accent.withOpacity(0.28), blurRadius: 6)]),
+          child: Container(
+            margin: EdgeInsets.all(2 + (index % 4)),
+            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: colors[(index + 1) % colors.length], width: 1 + (index % 2)),
+              gradient: index % 4 == 0 ? LinearGradient(colors: [accent.withOpacity(0.25), white]) : null),
+            child: Icon(index % 5 == 0 ? Icons.star : index % 5 == 1 ? Icons.diamond : index % 5 == 2 ? Icons.auto_awesome : index % 5 == 3 ? Icons.local_florist : Icons.circle, size: 18, color: accent.withOpacity(0.8)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 // MAX WORDS FORMATTER
 
