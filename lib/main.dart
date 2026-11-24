@@ -649,33 +649,50 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  Future<void> chooseDp() async {
-    try {
-      final picked = await imagePicker.pickImage(
-        source: ImageSource.gallery,
-      );
+Future<void> chooseDp() async {
+  try {
+    final picked = await imagePicker.pickImage(
+      source: ImageSource.gallery,
+    );
 
-      if (picked == null || !mounted) return;
+    if (picked == null || !mounted) return;
 
-      final bytes = await picked.readAsBytes();
-
-      if (bytes.isEmpty || !mounted) return;
-
-      setState(() {
-        dpPreviewBytes = bytes;
-      });
-    } catch (e) {
-      debugPrint('DP selection error: $e');
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to load photo. Please try again.'),
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: picked.path,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Crop Profile Photo',
+          toolbarColor: const Color(0xFFFFC83D),
+          toolbarWidgetColor: Colors.black,
+          lockAspectRatio: false,
         ),
-      );
-    }
+        IOSUiSettings(
+          title: 'Crop Profile Photo',
+        ),
+      ],
+    );
+
+    if (cropped == null || !mounted) return;
+
+    final bytes = await cropped.readAsBytes();
+
+    if (bytes.isEmpty || !mounted) return;
+
+    setState(() {
+      dpPreviewBytes = bytes;
+    });
+  } catch (e) {
+    debugPrint('DP crop error: $e');
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Unable to crop photo. Please try again.'),
+      ),
+    );
   }
+}
 
   void showComingSoon(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
