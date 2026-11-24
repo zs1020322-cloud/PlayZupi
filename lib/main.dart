@@ -1355,14 +1355,13 @@ class _DpCropScreenState extends State<DpCropScreen> {
 
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    final nextZoom = (_startZoom * details.scale).clamp(1.0, 4.0).toDouble();
+    // Smooth zoom with pinch and pan with one finger. Keep the pinch anchor fixed.
+    final nextZoom = (_startZoom * details.scale).clamp(1.0, 5.0).toDouble();
     final center = Offset(_viewportSide / 2, _viewportSide / 2);
-    final startFromCenter = _startFocal - center;
-    final currentFromCenter = details.localFocalPoint - center;
-    final scaleChange = nextZoom / _startZoom;
-    // Keep the photo anchored to the pinch focal point while zooming;
-    // when using one finger, scaleChange is 1 and this becomes smooth dragging.
-    final nextOffset = _startOffset + currentFromCenter - (startFromCenter * scaleChange);
+    final focalFromCenter = _startFocal - center;
+    final zoomRatio = nextZoom / _startZoom;
+    final anchorShift = focalFromCenter * (1.0 - zoomRatio);
+    final nextOffset = _startOffset + details.focalPointDelta + anchorShift;
     setState(() {
       _zoom = nextZoom;
       _offset = _clampOffset(nextOffset, nextZoom);
@@ -1495,12 +1494,11 @@ class _DpCropScreenState extends State<DpCropScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Pinch to zoom • Drag to move  ${_zoom.toStringAsFixed(1)}×', style: const TextStyle(color: white, fontWeight: FontWeight.w800)),
+                                Text('Pinch to zoom • Drag to move  ${_zoom.toStringAsFixed(2)}×', style: const TextStyle(color: white, fontWeight: FontWeight.w800)),
                                 Slider(
                                   value: _zoom,
                                   min: 1,
-                                  max: 4,
-                                  divisions: 30,
+                                  max: 5,
                                   activeColor: gold,
                                   inactiveColor: Colors.white24,
                                   onChanged: _onSliderChanged,
