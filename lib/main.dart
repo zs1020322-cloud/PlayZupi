@@ -1278,7 +1278,7 @@ Future<void> cropAndPreview(String path) async {
   }
 }
 
-// DP CROP SCREEN (LOCAL UI; NO EXTERNAL CROP ACTIVITY)
+// DP CROP SCREEN (CUSTOM SQUARE CROP, DRAG + SCALE SLIDER)
 class DpCropScreen extends StatefulWidget {
   final String imagePath;
   const DpCropScreen({super.key, required this.imagePath});
@@ -1290,12 +1290,16 @@ class DpCropScreen extends StatefulWidget {
 
 class _DpCropScreenState extends State<DpCropScreen> {
   final GlobalKey _cropKey = GlobalKey();
-  double _imageWidth = 300;
-  double _imageHeight = 300;
   double _zoom = 1.0;
+  double _baseWidth = 0;
+  double _baseHeight = 0;
+  Offset _offset = Offset.zero;
+  Offset _dragStart = Offset.zero;
+  double _viewportSide = 0;
   bool _loading = true;
   bool _saving = false;
   String? _error;
+
 
   @override
   void initState() {
@@ -1303,28 +1307,24 @@ class _DpCropScreenState extends State<DpCropScreen> {
     _prepareImage();
   }
 
+
   Future<void> _prepareImage() async {
     try {
       final bytes = await File(widget.imagePath).readAsBytes();
       final codec = await ui.instantiateImageCodec(bytes);
       final frame = await codec.getNextFrame();
       final image = frame.image;
-      final width = image.width.toDouble();
-      final height = image.height.toDouble();
-      final ratio = width / height;
-      if (!mounted) return;
-      setState(() {
-        if (ratio >= 1) {
-          _imageWidth = 300 * ratio;
-          _imageHeight = 300;
-        } else {
-          _imageWidth = 300;
-          _imageHeight = 300 / ratio;
-        }
-        _loading = false;
-      });
+      final w = image.width.toDouble();
+      final h = image.height.toDouble();
       image.dispose();
       codec.dispose();
+      if (!mounted) return;
+      // Crop viewport is square; image starts at cover size so no blank edges.
+      setState(() {
+        _baseWidth = w;
+        _baseHeight = h;
+        _loading = false;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -1335,7 +1335,19 @@ class _DpCropScreenState extends State<DpCropScreen> {
   }
 
 
-  Future<void> _confirmCrop() async {
+  void _onPanStart(DragStartDetails details) => _dragStart = _offset;
+  void _onPanUpdate(DragUpdateDetails details) {
+    setState(() {
+      final next = _offset + details.delta;
+      final cover = _viewportSide / (_baseWidth < _baseHeight ? _baseWidth : _baseHeight);
+      final maxX = ((_baseWidth * cover * _zoom) - _viewportSide) / 2;
+      final maxY = ((_baseHeight * cover * _zoom) - _viewportSide) / 2;
+      _offset = Offset(next.dx.clamp(-maxX, maxX).toDouble(), next.dy.clamp(-maxY, maxY).toDouble());
+    });
+  }
+
+
+  Future<void> _confirmCrop(double side) async {
     if (_saving) return;
     setState(() => _saving = true);
     try {
@@ -1370,7 +1382,7 @@ class _DpCropScreenState extends State<DpCropScreen> {
         title: const Text('Crop Profile Photo', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 6),
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(foregroundColor: gold, side: BorderSide(color: gold), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               onPressed: _saving ? null : () => Navigator.pop(context),
@@ -1378,10 +1390,13 @@ class _DpCropScreenState extends State<DpCropScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.only(right: 8),
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(foregroundColor: gold, side: BorderSide(color: gold), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: _loading || _saving || _error != null ? null : _confirmCrop,
+              onPressed: _loading || _saving || _error != null ? null : () {
+                final side = (MediaQuery.sizeOf(context).width - 24).clamp(220.0, 600.0).toDouble();
+                _confirmCrop(side);
+              },
               child: Text(_saving ? 'Saving...' : 'Done', style: const TextStyle(fontWeight: FontWeight.w900)),
             ),
           ),
@@ -1394,44 +1409,63 @@ class _DpCropScreenState extends State<DpCropScreen> {
                 ? Center(child: Text(_error!, style: const TextStyle(color: white)))
                 : LayoutBuilder(builder: (context, constraints) {
                     final side = (constraints.maxWidth - 24).clamp(220.0, 600.0).toDouble();
+                    _viewportSide = side;
+                    final coverScale = side / (_baseWidth < _baseHeight ? _baseWidth : _baseHeight);
+                    final imageW = _baseWidth * coverScale * _zoom;
+                    final imageH = _baseHeight * coverScale * _zoom;
                     return Column(
                       children: [
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         Expanded(
                           child: Center(
-                            child: RepaintBoundary(
-                              key: _cropKey,
-                              child: SizedBox(
-                                width: side,
-                                height: side,
-                                child: ClipRect(
-                                  child: InteractiveViewer(
-                                    constrained: false,
-                                    panEnabled: true,
-                                    scaleEnabled: false,
-                                    minScale: 1,
-                                    maxScale: 1,
-                                    boundaryMargin: const EdgeInsets.all(0),
-                                    child: Transform.scale(
-                                      scale: _zoom,
+                            child: SizedBox(
+                              width: side,
+                              height: side,
+                              child: Stack(
+                                children: [
+                                  RepaintBoundary(
+                                    key: _cropKey,
+                                    child: ClipRect(
                                       child: SizedBox(
-                                        width: _imageWidth,
-                                        height: _imageHeight,
-                                        child: Image.file(File(widget.imagePath), fit: BoxFit.fill),
+                                        width: side,
+                                        height: side,
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            GestureDetector(
+                                              onPanStart: _onPanStart,
+                                              onPanUpdate: _onPanUpdate,
+                                              child: Transform.translate(
+                                                offset: _offset,
+                                                child: SizedBox(
+                                                  width: imageW,
+                                                  height: imageH,
+                                                  child: Image.file(File(widget.imagePath), fit: BoxFit.fill),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
+                                  IgnorePointer(
+                                    child: CustomPaint(
+                                      size: Size(side, side),
+                                      painter: _CropCornersPainter(color: gold),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+                          padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text('Scroll to zoom • Drag to adjust', style: TextStyle(color: white, fontWeight: FontWeight.w800)),
+                              Text('Move photo • Adjust size  ${_zoom.toStringAsFixed(1)}×', style: const TextStyle(color: white, fontWeight: FontWeight.w800)),
                               Slider(
                                 value: _zoom,
                                 min: 1,
@@ -1450,6 +1484,31 @@ class _DpCropScreenState extends State<DpCropScreen> {
       ),
     );
   }
+}
+
+
+class _CropCornersPainter extends CustomPainter {
+  final Color color;
+  _CropCornersPainter({required this.color});
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()..color = color..strokeWidth = 4..style = PaintingStyle.stroke..strokeCap = StrokeCap.square;
+    const length = 28.0;
+    final w = size.width;
+    final h = size.height;
+    final corners = [
+      [Offset.zero, Offset(length, 0), Offset(0, length)],
+      [Offset(w, 0), Offset(w - length, 0), Offset(w, length)],
+      [Offset(0, h), Offset(length, h), Offset(0, h - length)],
+      [Offset(w, h), Offset(w - length, h), Offset(w, h - length)],
+    ];
+    for (final c in corners) {
+      canvas.drawLine(c[0], c[1], p);
+      canvas.drawLine(c[0], c[2], p);
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _CropCornersPainter oldDelegate) => oldDelegate.color != color;
 }
 
 
