@@ -1292,10 +1292,10 @@ class _DpCropScreenState extends State<DpCropScreen> {
   final GlobalKey _cropKey = GlobalKey();
   double _imageWidth = 300;
   double _imageHeight = 300;
+  double _zoom = 1.0;
   bool _loading = true;
   bool _saving = false;
   String? _error;
-
 
   @override
   void initState() {
@@ -1311,16 +1311,15 @@ class _DpCropScreenState extends State<DpCropScreen> {
       final image = frame.image;
       final width = image.width.toDouble();
       final height = image.height.toDouble();
-      const viewport = 300.0;
       final ratio = width / height;
       if (!mounted) return;
       setState(() {
         if (ratio >= 1) {
-          _imageWidth = viewport * ratio;
-          _imageHeight = viewport;
+          _imageWidth = 300 * ratio;
+          _imageHeight = 300;
         } else {
-          _imageWidth = viewport;
-          _imageHeight = viewport / ratio;
+          _imageWidth = 300;
+          _imageHeight = 300 / ratio;
         }
         _loading = false;
       });
@@ -1334,6 +1333,7 @@ class _DpCropScreenState extends State<DpCropScreen> {
       });
     }
   }
+
 
   Future<void> _confirmCrop() async {
     if (_saving) return;
@@ -1369,53 +1369,84 @@ class _DpCropScreenState extends State<DpCropScreen> {
         foregroundColor: white,
         title: const Text('Crop Profile Photo', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
-          TextButton(
-            onPressed: _loading || _saving || _error != null ? null : _confirmCrop,
-            child: Text(_saving ? 'Saving...' : 'Done', style: const TextStyle(color: gold, fontWeight: FontWeight.w900)),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(foregroundColor: gold, side: BorderSide(color: gold), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              onPressed: _saving ? null : () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(foregroundColor: gold, side: BorderSide(color: gold), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              onPressed: _loading || _saving || _error != null ? null : _confirmCrop,
+              child: Text(_saving ? 'Saving...' : 'Done', style: const TextStyle(fontWeight: FontWeight.w900)),
+            ),
           ),
         ],
       ),
       body: SafeArea(
-        child: Center(
-          child: _loading
-              ? const CircularProgressIndicator(color: gold)
-              : _error != null
-                  ? Text(_error!, style: const TextStyle(color: white))
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator(color: gold))
+            : _error != null
+                ? Center(child: Text(_error!, style: const TextStyle(color: white)))
+                : LayoutBuilder(builder: (context, constraints) {
+                    final side = (constraints.maxWidth - 24).clamp(220.0, 600.0).toDouble();
+                    return Column(
                       children: [
-                        RepaintBoundary(
-                          key: _cropKey,
-                          child: SizedBox(
-                            width: 300,
-                            height: 300,
-                            child: ClipRect(
-                              child: InteractiveViewer(
-                                constrained: false,
-                                minScale: 1,
-                                maxScale: 4,
-                                boundaryMargin: const EdgeInsets.all(0),
-                                child: SizedBox(
-                                  width: _imageWidth,
-                                  height: _imageHeight,
-                                  child: Image.file(File(widget.imagePath), fit: BoxFit.fill),
+                        const SizedBox(height: 10),
+                        Expanded(
+                          child: Center(
+                            child: RepaintBoundary(
+                              key: _cropKey,
+                              child: SizedBox(
+                                width: side,
+                                height: side,
+                                child: ClipRect(
+                                  child: InteractiveViewer(
+                                    constrained: false,
+                                    panEnabled: true,
+                                    scaleEnabled: false,
+                                    minScale: 1,
+                                    maxScale: 1,
+                                    boundaryMargin: const EdgeInsets.all(0),
+                                    child: Transform.scale(
+                                      scale: _zoom,
+                                      child: SizedBox(
+                                        width: _imageWidth,
+                                        height: _imageHeight,
+                                        child: Image.file(File(widget.imagePath), fit: BoxFit.fill),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        const Text('Pinch to zoom • Drag to adjust', style: TextStyle(color: white, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: 300,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: const Color(0xFF242424), borderRadius: BorderRadius.circular(14), border: Border.all(color: gold)),
-                          child: const Text('Move and zoom the photo inside the square. The visible square becomes your DP.', textAlign: TextAlign.center, style: TextStyle(color: white, height: 1.35)),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Scroll to zoom • Drag to adjust', style: TextStyle(color: white, fontWeight: FontWeight.w800)),
+                              Slider(
+                                value: _zoom,
+                                min: 1,
+                                max: 4,
+                                divisions: 30,
+                                activeColor: gold,
+                                inactiveColor: Colors.white24,
+                                onChanged: (v) => setState(() => _zoom = v),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
-        ),
+                    );
+                  }),
       ),
     );
   }
@@ -1496,7 +1527,7 @@ class _DpCollectionScreenState extends State<DpCollectionScreen> {
             child: GridView.builder(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 18),
               itemCount: names.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.78),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: widget.kind == DpCollectionKind.frames ? 4 : 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: widget.kind == DpCollectionKind.themes ? 1.0 : widget.kind == DpCollectionKind.ornaments ? 2.25 : 0.78),
               itemBuilder: (context, index) {
                 final accent = colors[index % colors.length];
                 final isSelected = selected == index;
