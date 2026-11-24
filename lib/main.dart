@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -680,6 +681,20 @@ Future<void> cropAndPreview(String path) async {
     );
   }
 }
+
+  Future<void> chooseDate() async {
+    final today = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate ?? today,
+      firstDate: DateTime(1900),
+      lastDate: today,
+      helpText: 'Select Date of Birth',
+    );
+    if (picked != null && mounted) {
+      setState(() => selectedDate = picked);
+    }
+  }
 
   void showComingSoon(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
