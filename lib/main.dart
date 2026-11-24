@@ -600,12 +600,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     'Canada': '🇨🇦',
   };
 
-  @override
-  void initState() {
-    super.initState();
-    loadProfileData();
-  }
+@override
+void initState() {
+  super.initState();
+  loadProfileData();
+  recoverLostDp();
+}
 
+  
   Future<void> loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     final savedDob = prefs.getString('profile_dob');
@@ -628,6 +630,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       isLoading = false;
     });
   }
+
+
+Future<void> recoverLostDp() async {
+  try {
+    final response = await imagePicker.retrieveLostData();
+
+    if (response.isEmpty || !mounted) return;
+
+    final file = response.files?.first;
+    if (file == null) return;
+
+    final bytes = await file.readAsBytes();
+
+    if (bytes.isEmpty || !mounted) return;
+
+    setState(() {
+      dpPreviewBytes = bytes;
+    });
+  } catch (e) {
+    debugPrint('DP recovery error: $e');
+  }
+}
+  
 
   @override
   void dispose() {
