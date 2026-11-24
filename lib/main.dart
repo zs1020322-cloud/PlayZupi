@@ -1278,7 +1278,7 @@ Future<void> cropAndPreview(String path) async {
   }
 }
 
-// DP CROP SCREEN (CUSTOM SQUARE CROP, DRAG + SCALE SLIDER)
+// DP CROP SCREEN (PINCH ZOOM + ONE-FINGER MOVE + SLIDER)
 class DpCropScreen extends StatefulWidget {
   final String imagePath;
   const DpCropScreen({super.key, required this.imagePath});
@@ -1291,10 +1291,11 @@ class DpCropScreen extends StatefulWidget {
 class _DpCropScreenState extends State<DpCropScreen> {
   final GlobalKey _cropKey = GlobalKey();
   double _zoom = 1.0;
+  double _startZoom = 1.0;
   double _baseWidth = 0;
   double _baseHeight = 0;
   Offset _offset = Offset.zero;
-  Offset _dragStart = Offset.zero;
+  Offset _startOffset = Offset.zero;
   double _viewportSide = 0;
   bool _loading = true;
   bool _saving = false;
@@ -1319,7 +1320,6 @@ class _DpCropScreenState extends State<DpCropScreen> {
       image.dispose();
       codec.dispose();
       if (!mounted) return;
-      // Crop viewport is square; image starts at cover size so no blank edges.
       setState(() {
         _baseWidth = w;
         _baseHeight = h;
@@ -1335,19 +1335,45 @@ class _DpCropScreenState extends State<DpCropScreen> {
   }
 
 
-  void _onPanStart(DragStartDetails details) => _dragStart = _offset;
-  void _onPanUpdate(DragUpdateDetails details) {
+  Offset _clampOffset(Offset value, double zoom) {
+    if (_viewportSide <= 0 || _baseWidth <= 0 || _baseHeight <= 0) return Offset.zero;
+    final cover = _viewportSide / (_baseWidth < _baseHeight ? _baseWidth : _baseHeight);
+    final maxX = ((_baseWidth * cover * zoom) - _viewportSide) / 2;
+    final maxY = ((_baseHeight * cover * zoom) - _viewportSide) / 2;
+    return Offset(
+      value.dx.clamp(-maxX, maxX).toDouble(),
+      value.dy.clamp(-maxY, maxY).toDouble(),
+    );
+  }
+
+  void _onScaleStart(ScaleStartDetails details) {
+    _startZoom = _zoom;
+    _startOffset = _offset;
+  }
+
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    final nextZoom = (_startZoom * details.scale).clamp(1.0, 4.0).toDouble();
+    final center = Offset(_viewportSide / 2, _viewportSide / 2);
+    final focal = details.localFocalPoint - center;
+    final scaleChange = nextZoom / _startZoom;
+    final nextOffset = _startOffset + details.focalPointDelta + (focal * (1 - scaleChange));
     setState(() {
-      final next = _offset + details.delta;
-      final cover = _viewportSide / (_baseWidth < _baseHeight ? _baseWidth : _baseHeight);
-      final maxX = ((_baseWidth * cover * _zoom) - _viewportSide) / 2;
-      final maxY = ((_baseHeight * cover * _zoom) - _viewportSide) / 2;
-      _offset = Offset(next.dx.clamp(-maxX, maxX).toDouble(), next.dy.clamp(-maxY, maxY).toDouble());
+      _zoom = nextZoom;
+      _offset = _clampOffset(nextOffset, nextZoom);
     });
   }
 
 
-  Future<void> _confirmCrop(double side) async {
+  void _onSliderChanged(double value) {
+    setState(() {
+      _zoom = value;
+      _offset = _clampOffset(_offset, value);
+    });
+  }
+
+
+  Future<void> _confirmCrop() async {
     if (_saving) return;
     setState(() => _saving = true);
     try {
@@ -1393,10 +1419,7 @@ class _DpCropScreenState extends State<DpCropScreen> {
             padding: const EdgeInsets.only(right: 8),
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(foregroundColor: gold, side: BorderSide(color: gold), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: _loading || _saving || _error != null ? null : () {
-                final side = (MediaQuery.sizeOf(context).width - 24).clamp(220.0, 600.0).toDouble();
-                _confirmCrop(side);
-              },
+              onPressed: _loading || _saving || _error != null ? null : _confirmCrop,
               child: Text(_saving ? 'Saving...' : 'Done', style: const TextStyle(fontWeight: FontWeight.w900)),
             ),
           ),
@@ -1432,17 +1455,19 @@ class _DpCropScreenState extends State<DpCropScreen> {
                                         child: Stack(
                                           alignment: Alignment.center,
                                           children: [
-                                            GestureDetector(
-                                              onPanStart: _onPanStart,
-                                              onPanUpdate: _onPanUpdate,
-                                              child: Transform.translate(
-                                                offset: _offset,
-                                                child: SizedBox(
-                                                  width: imageW,
-                                                  height: imageH,
-                                                  child: Image.file(File(widget.imagePath), fit: BoxFit.fill),
-                                                ),
+                                            Transform.translate(
+                                              offset: _offset,
+                                              child: SizedBox(
+                                                width: imageW,
+                                                height: imageH,
+                                                child: Image.file(File(widget.imagePath), fit: BoxFit.fill),
                                               ),
+                                            ),
+                                            GestureDetector(
+                                              behavior: HitTestBehavior.translucent,
+                                              onScaleStart: _onScaleStart,
+                                              onScaleUpdate: _onScaleUpdate,
+                                              child: const SizedBox.expand(),
                                             ),
                                           ],
                                         ),
@@ -1462,30 +1487,29 @@ class _DpCropScreenState extends State<DpCropScreen> {
                         ),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Move photo • Adjust size  ${_zoom.toStringAsFixed(1)}×', style: const TextStyle(color: white, fontWeight: FontWeight.w800)),
-                              Slider(
-                                value: _zoom,
-                                min: 1,
-                                max: 4,
-                                divisions: 30,
-                                activeColor: gold,
-                                inactiveColor: Colors.white24,
-                                onChanged: (v) => setState(() => _zoom = v),
-                              ),
-                            ],
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Pinch to zoom • Drag to move  ${_zoom.toStringAsFixed(1)}×', style: const TextStyle(color: white, fontWeight: FontWeight.w800)),
+                                Slider(
+                                  value: _zoom,
+                                  min: 1,
+                                  max: 4,
+                                  divisions: 30,
+                                  activeColor: gold,
+                                  inactiveColor: Colors.white24,
+                                  onChanged: _onSliderChanged,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    );
+                        ],
+                      );
                   }),
       ),
     );
   }
 }
-
 
 class _CropCornersPainter extends CustomPainter {
   final Color color;
