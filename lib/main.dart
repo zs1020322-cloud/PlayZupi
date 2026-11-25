@@ -1291,12 +1291,9 @@ class DpCropScreen extends StatefulWidget {
 class _DpCropScreenState extends State<DpCropScreen> {
   final GlobalKey _cropKey = GlobalKey();
   double _zoom = 1.0;
-  double _startZoom = 1.0;
   double _baseWidth = 0;
   double _baseHeight = 0;
   Offset _offset = Offset.zero;
-  Offset _startOffset = Offset.zero;
-  Offset _startFocal = Offset.zero;
   double _viewportSide = 0;
   bool _loading = true;
   bool _saving = false;
@@ -1347,24 +1344,28 @@ class _DpCropScreenState extends State<DpCropScreen> {
     );
   }
 
+  double _lastGestureScale = 1.0;
+  Offset _lastGestureFocal = Offset.zero;
+
   void _onScaleStart(ScaleStartDetails details) {
-    _startZoom = _zoom;
-    _startOffset = _offset;
-    _startFocal = details.localFocalPoint;
+    _lastGestureScale = 1.0;
+    _lastGestureFocal = details.localFocalPoint;
   }
 
-
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    // Calculate pan and pinch zoom from the gesture's initial state so the
-    // image point beneath the fingers stays anchored (no cumulative drift).
-    final nextZoom = (_startZoom * details.scale).clamp(1.0, 5.0).toDouble();
-    final ratio = nextZoom / _startZoom;
+    // Apply each gesture update relative to the previous update. This keeps
+    // one-finger drag responsive and makes pinch zoom track the moving focal
+    // point without a jump when the gesture starts or the fingers move.
+    final incrementalScale = details.scale / _lastGestureScale;
+    final nextZoom = (_zoom * incrementalScale).clamp(1.0, 5.0).toDouble();
+    final ratio = nextZoom / _zoom;
     final center = Offset(_viewportSide / 2, _viewportSide / 2);
-    final focalMovement = details.localFocalPoint - _startFocal;
-    final focalFromCenter = _startFocal - center - _startOffset;
-    final anchorShift = focalFromCenter * (1.0 - ratio);
-    final nextOffset = _startOffset + focalMovement + anchorShift;
+    final focal = details.localFocalPoint;
+    final anchor = _lastGestureFocal - center - _offset;
+    final nextOffset = focal - center - (anchor * ratio);
 
+    _lastGestureScale = details.scale;
+    _lastGestureFocal = focal;
     setState(() {
       _zoom = nextZoom;
       _offset = _clampOffset(nextOffset, nextZoom);
