@@ -1291,9 +1291,12 @@ class DpCropScreen extends StatefulWidget {
 class _DpCropScreenState extends State<DpCropScreen> {
   final GlobalKey _cropKey = GlobalKey();
   double _zoom = 1.0;
+  double _startZoom = 1.0;
   double _baseWidth = 0;
   double _baseHeight = 0;
   Offset _offset = Offset.zero;
+  Offset _startOffset = Offset.zero;
+  Offset _startFocal = Offset.zero;
   double _viewportSide = 0;
   bool _loading = true;
   bool _saving = false;
@@ -1323,7 +1326,7 @@ class _DpCropScreenState extends State<DpCropScreen> {
         _baseHeight = h;
         _loading = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -1333,39 +1336,42 @@ class _DpCropScreenState extends State<DpCropScreen> {
   }
 
 
+  double get _coverScale {
+    if (_viewportSide <= 0 || _baseWidth <= 0 || _baseHeight <= 0) return 1;
+    return _viewportSide / (_baseWidth < _baseHeight ? _baseWidth : _baseHeight);
+  }
+
+
   Offset _clampOffset(Offset value, double zoom) {
     if (_viewportSide <= 0 || _baseWidth <= 0 || _baseHeight <= 0) return Offset.zero;
-    final cover = _viewportSide / (_baseWidth < _baseHeight ? _baseWidth : _baseHeight);
-    final maxX = ((_baseWidth * cover * zoom) - _viewportSide) / 2;
-    final maxY = ((_baseHeight * cover * zoom) - _viewportSide) / 2;
+    final scaledW = _baseWidth * _coverScale * zoom;
+    final scaledH = _baseHeight * _coverScale * zoom;
+    final maxX = ((scaledW - _viewportSide) / 2).clamp(0.0, double.infinity);
+    final maxY = ((scaledH - _viewportSide) / 2).clamp(0.0, double.infinity);
     return Offset(
       value.dx.clamp(-maxX, maxX).toDouble(),
       value.dy.clamp(-maxY, maxY).toDouble(),
     );
   }
 
-  double _lastGestureScale = 1.0;
-  Offset _lastGestureFocal = Offset.zero;
 
   void _onScaleStart(ScaleStartDetails details) {
-    _lastGestureScale = 1.0;
-    _lastGestureFocal = details.localFocalPoint;
+    _startZoom = _zoom;
+    _startOffset = _offset;
+    _startFocal = details.localFocalPoint;
   }
 
-  void _onScaleUpdate(ScaleUpdateDetails details) {
-    // Apply each gesture update relative to the previous update. This keeps
-    // one-finger drag responsive and makes pinch zoom track the moving focal
-    // point without a jump when the gesture starts or the fingers move.
-    final incrementalScale = details.scale / _lastGestureScale;
-    final nextZoom = (_zoom * incrementalScale).clamp(1.0, 5.0).toDouble();
-    final ratio = nextZoom / _zoom;
-    final center = Offset(_viewportSide / 2, _viewportSide / 2);
-    final focal = details.localFocalPoint;
-    final anchor = _lastGestureFocal - center - _offset;
-    final nextOffset = focal - center - (anchor * ratio);
 
-    _lastGestureScale = details.scale;
-    _lastGestureFocal = focal;
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    // Pan and pinch are one combined gesture. Always calculate from the gesture
+    // start snapshot, preventing accumulated drift/jumps between update frames.
+    final nextZoom = (_startZoom * details.scale).clamp(1.0, 5.0).toDouble();
+    final ratio = nextZoom / _startZoom;
+    final center = Offset(_viewportSide / 2, _viewportSide / 2);
+    final focalDelta = details.localFocalPoint - _startFocal;
+    final imagePointFromCenter = _startFocal - center - _startOffset;
+    final zoomShift = imagePointFromCenter * (1.0 - ratio);
+    final nextOffset = _startOffset + focalDelta + zoomShift;
     setState(() {
       _zoom = nextZoom;
       _offset = _clampOffset(nextOffset, nextZoom);
@@ -1374,9 +1380,12 @@ class _DpCropScreenState extends State<DpCropScreen> {
 
 
   void _onSliderChanged(double value) {
+    final ratio = value / _zoom;
+    final center = Offset(_viewportSide / 2, _viewportSide / 2);
+    final nextOffset = _offset * ratio;
     setState(() {
       _zoom = value;
-      _offset = _clampOffset(_offset, value);
+      _offset = _clampOffset(nextOffset, value);
     });
   }
 
@@ -1441,9 +1450,8 @@ class _DpCropScreenState extends State<DpCropScreen> {
                 : LayoutBuilder(builder: (context, constraints) {
                     final side = (constraints.maxWidth - 24).clamp(220.0, 600.0).toDouble();
                     _viewportSide = side;
-                    final coverScale = side / (_baseWidth < _baseHeight ? _baseWidth : _baseHeight);
-                    final imageW = _baseWidth * coverScale * _zoom;
-                    final imageH = _baseHeight * coverScale * _zoom;
+                    final imageW = _baseWidth * _coverScale * _zoom;
+                    final imageH = _baseHeight * _coverScale * _zoom;
                     return Column(
                       children: [
                         const SizedBox(height: 12),
@@ -1495,28 +1503,29 @@ class _DpCropScreenState extends State<DpCropScreen> {
                         ),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('Pinch to zoom • Drag to move  ${_zoom.toStringAsFixed(2)}×', style: const TextStyle(color: white, fontWeight: FontWeight.w800)),
-                                Slider(
-                                  value: _zoom,
-                                  min: 1,
-                                  max: 5,
-                                  activeColor: gold,
-                                  inactiveColor: Colors.white24,
-                                  onChanged: _onSliderChanged,
-                                ),
-                              ],
-                            ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Pinch to zoom • Drag to move  ${_zoom.toStringAsFixed(2)}×', style: const TextStyle(color: white, fontWeight: FontWeight.w800)),
+                              Slider(
+                                value: _zoom,
+                                min: 1,
+                                max: 5,
+                                activeColor: gold,
+                                inactiveColor: Colors.white24,
+                                onChanged: _onSliderChanged,
+                              ),
+                            ],
                           ),
-                        ],
-                      );
+                        ),
+                      ],
+                    );
                   }),
       ),
     );
   }
 }
+
 
 class _CropCornersPainter extends CustomPainter {
   final Color color;
