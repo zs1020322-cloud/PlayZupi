@@ -1278,7 +1278,7 @@ Future<void> cropAndPreview(String path) async {
   }
 }
 
-// DP CROP SCREEN - FRESH PAN / PINCH / CIRCULAR ZOOM CONTROL
+// DP CROP SCREEN - NEW INTERACTIVE VIEWER BASED PAN / PINCH / ZOOM
 class DpCropScreen extends StatefulWidget {
   final String imagePath;
   const DpCropScreen({super.key, required this.imagePath});
@@ -1290,14 +1290,11 @@ class DpCropScreen extends StatefulWidget {
 
 class _DpCropScreenState extends State<DpCropScreen> {
   final GlobalKey _cropKey = GlobalKey();
+  final TransformationController _transformController = TransformationController();
   double _zoom = 1.0;
-  double _gestureZoom = 1.0;
   double _imageWidth = 0;
   double _imageHeight = 0;
   double _frameSide = 0;
-  Offset _offset = Offset.zero;
-  Offset _gestureOffset = Offset.zero;
-  Offset _gestureFocal = Offset.zero;
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -1306,7 +1303,23 @@ class _DpCropScreenState extends State<DpCropScreen> {
   @override
   void initState() {
     super.initState();
+    _transformController.addListener(_onTransformChanged);
     _loadDimensions();
+  }
+
+
+  @override
+  void dispose() {
+    _transformController.removeListener(_onTransformChanged);
+    _transformController.dispose();
+    super.dispose();
+  }
+
+
+  void _onTransformChanged() {
+    final scale = _transformController.value.getMaxScaleOnAxis().clamp(1.0, 6.0).toDouble();
+    if (!mounted || (scale - _zoom).abs() < 0.001) return;
+    setState(() => _zoom = scale);
   }
 
 
@@ -1336,58 +1349,28 @@ class _DpCropScreenState extends State<DpCropScreen> {
   }
 
 
-  double get _fitScale {
+  double get _baseScale {
     if (_frameSide <= 0 || _imageWidth <= 0 || _imageHeight <= 0) return 1;
     return _frameSide / (_imageWidth < _imageHeight ? _imageWidth : _imageHeight);
   }
 
 
-  Offset _limitPan(Offset pan, double zoom) {
-    if (_frameSide <= 0 || _imageWidth <= 0 || _imageHeight <= 0) return Offset.zero;
-    final width = _imageWidth * _fitScale * zoom;
-    final height = _imageHeight * _fitScale * zoom;
-    final maxX = ((width - _frameSide) / 2).clamp(0.0, double.infinity);
-    final maxY = ((height - _frameSide) / 2).clamp(0.0, double.infinity);
-    return Offset(pan.dx.clamp(-maxX, maxX).toDouble(), pan.dy.clamp(-maxY, maxY).toDouble());
-  }
-
-
-  void _startGesture(ScaleStartDetails details) {
-    _gestureZoom = _zoom;
-    _gestureOffset = _offset;
-    _gestureFocal = details.localFocalPoint;
-  }
-
-
-  void _updateGesture(ScaleUpdateDetails details) {
-    final newZoom = (_gestureZoom * details.scale).clamp(1.0, 6.0).toDouble();
-    final scaleFromStart = newZoom / _gestureZoom;
-    final center = Offset(_frameSide / 2, _frameSide / 2);
-    // Keep the image point under the fingers fixed while pinching, while allowing
-    // the same recognizer to handle one-finger pan without competing gestures.
-    final newOffset = details.localFocalPoint - center +
-        (center + _gestureOffset - _gestureFocal) * scaleFromStart;
-    setState(() {
-      _zoom = newZoom;
-      _offset = _limitPan(newOffset, newZoom);
-    });
-  }
-
-
   void _setZoom(double value) {
     final next = value.clamp(1.0, 6.0).toDouble();
-    setState(() {
-      _zoom = next;
-      _offset = _limitPan(_offset, next);
-    });
+    final current = _transformController.value;
+    final currentScale = current.getMaxScaleOnAxis().clamp(1.0, 6.0).toDouble();
+    final ratio = next / currentScale;
+    final center = Offset(_frameSide / 2, _frameSide / 2);
+    final oldTranslation = Offset(current.entry(0, 3), current.entry(1, 3));
+    final newTranslation = center * (1 - ratio) + oldTranslation * ratio;
+    _transformController.value = Matrix4.identity()
+      ..translate(newTranslation.dx, newTranslation.dy)
+      ..scale(next);
   }
 
 
   void _resetCrop() {
-    setState(() {
-      _zoom = 1.0;
-      _offset = Offset.zero;
-    });
+    _transformController.value = Matrix4.identity();
   }
 
 
@@ -1418,15 +1401,15 @@ class _DpCropScreenState extends State<DpCropScreen> {
 
   Widget _zoomCircle({required IconData icon, required VoidCallback onTap, required String label}) {
     return SizedBox(
-      width: 48,
-      height: 48,
+      width: 50,
+      height: 50,
       child: Material(
         color: const Color(0xFF222222),
-        shape: CircleBorder(side: BorderSide(color: gold, width: 1.4)),
+        shape: CircleBorder(side: BorderSide(color: gold, width: 1.5)),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onTap,
-          child: Center(child: Icon(icon, color: gold, size: 22)),
+          child: Center(child: Icon(icon, color: gold, size: 23)),
         ),
       ),
     );
@@ -1461,8 +1444,8 @@ class _DpCropScreenState extends State<DpCropScreen> {
                 : LayoutBuilder(builder: (context, constraints) {
                     final side = (constraints.maxWidth - 24).clamp(220.0, 600.0).toDouble();
                     _frameSide = side;
-                    final imageW = _imageWidth * _fitScale * _zoom;
-                    final imageH = _imageHeight * _fitScale * _zoom;
+                    final imageW = _imageWidth * _baseScale;
+                    final imageH = _imageHeight * _baseScale;
                     return Column(
                       children: [
                         const SizedBox(height: 12),
@@ -1471,38 +1454,24 @@ class _DpCropScreenState extends State<DpCropScreen> {
                             child: SizedBox(
                               width: side,
                               height: side,
-                              child: Stack(
-                                children: [
-                                  RepaintBoundary(
-                                    key: _cropKey,
-                                    child: ClipRect(
-                                      child: SizedBox(
-                                        width: side,
-                                        height: side,
-                                        child: Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            Transform.translate(
-                                              offset: _offset,
-                                              child: SizedBox(
-                                                width: imageW,
-                                                height: imageH,
-                                                child: Image.file(File(widget.imagePath), fit: BoxFit.fill),
-                                              ),
-                                            ),
-                                            GestureDetector(
-                                              behavior: HitTestBehavior.opaque,
-                                              onScaleStart: _startGesture,
-                                              onScaleUpdate: _updateGesture,
-                                              child: const SizedBox.expand(),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                              child: RepaintBoundary(
+                                key: _cropKey,
+                                child: ClipRect(
+                                  child: InteractiveViewer(
+                                    transformationController: _transformController,
+                                    constrained: false,
+                                    alignment: Alignment.center,
+                                    minScale: 1.0,
+                                    maxScale: 6.0,
+                                    boundaryMargin: EdgeInsets.zero,
+                                    clipBehavior: Clip.hardEdge,
+                                    child: SizedBox(
+                                      width: imageW,
+                                      height: imageH,
+                                      child: Image.file(File(widget.imagePath), fit: BoxFit.fill),
                                     ),
                                   ),
-                                  IgnorePointer(child: CustomPaint(size: Size(side, side), painter: _CropCornersPainter(color: gold))),
-                                ],
+                                ),
                               ),
                             ),
                           ),
@@ -1512,8 +1481,8 @@ class _DpCropScreenState extends State<DpCropScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('Drag photo • Pinch to zoom • ${_zoom.toStringAsFixed(1)}×', style: const TextStyle(color: white, fontWeight: FontWeight.w800)),
-                              const SizedBox(height: 8),
+                              Text('Move photo • Pinch to zoom • ${_zoom.toStringAsFixed(1)}×', style: const TextStyle(color: white, fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 10),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -1522,7 +1491,7 @@ class _DpCropScreenState extends State<DpCropScreen> {
                                   SizedBox(
                                     width: 190,
                                     child: Slider(
-                                      value: _zoom,
+                                      value: _zoom.clamp(1.0, 6.0).toDouble(),
                                       min: 1,
                                       max: 6,
                                       divisions: 20,
@@ -1546,31 +1515,6 @@ class _DpCropScreenState extends State<DpCropScreen> {
       ),
     );
   }
-}
-
-
-class _CropCornersPainter extends CustomPainter {
-  final Color color;
-  _CropCornersPainter({required this.color});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..strokeWidth = 4..style = PaintingStyle.stroke..strokeCap = StrokeCap.square;
-    const length = 28.0;
-    final w = size.width;
-    final h = size.height;
-    final corners = [
-      [Offset.zero, Offset(length, 0), Offset(0, length)],
-      [Offset(w, 0), Offset(w - length, 0), Offset(w, length)],
-      [Offset(0, h), Offset(length, h), Offset(0, h - length)],
-      [Offset(w, h), Offset(w - length, h), Offset(w, h - length)],
-    ];
-    for (final corner in corners) {
-      canvas.drawLine(corner[0], corner[1], paint);
-      canvas.drawLine(corner[0], corner[2], paint);
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _CropCornersPainter oldDelegate) => oldDelegate.color != color;
 }
 
 
