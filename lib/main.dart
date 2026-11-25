@@ -1278,7 +1278,7 @@ Future<void> cropAndPreview(String path) async {
   }
 }
 
-// DP CROP SCREEN (PINCH ZOOM + ONE-FINGER MOVE + SLIDER)
+// DP CROP SCREEN - FRESH PAN / PINCH / CIRCULAR ZOOM CONTROL
 class DpCropScreen extends StatefulWidget {
   final String imagePath;
   const DpCropScreen({super.key, required this.imagePath});
@@ -1291,13 +1291,13 @@ class DpCropScreen extends StatefulWidget {
 class _DpCropScreenState extends State<DpCropScreen> {
   final GlobalKey _cropKey = GlobalKey();
   double _zoom = 1.0;
-  double _startZoom = 1.0;
-  double _baseWidth = 0;
-  double _baseHeight = 0;
+  double _gestureZoom = 1.0;
+  double _imageWidth = 0;
+  double _imageHeight = 0;
+  double _frameSide = 0;
   Offset _offset = Offset.zero;
-  Offset _startOffset = Offset.zero;
-  Offset _startFocal = Offset.zero;
-  double _viewportSide = 0;
+  Offset _gestureOffset = Offset.zero;
+  Offset _gestureFocal = Offset.zero;
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -1306,24 +1306,24 @@ class _DpCropScreenState extends State<DpCropScreen> {
   @override
   void initState() {
     super.initState();
-    _prepareImage();
+    _loadDimensions();
   }
 
 
-  Future<void> _prepareImage() async {
+  Future<void> _loadDimensions() async {
     try {
       final bytes = await File(widget.imagePath).readAsBytes();
       final codec = await ui.instantiateImageCodec(bytes);
       final frame = await codec.getNextFrame();
       final image = frame.image;
-      final w = image.width.toDouble();
-      final h = image.height.toDouble();
+      final width = image.width.toDouble();
+      final height = image.height.toDouble();
       image.dispose();
       codec.dispose();
       if (!mounted) return;
       setState(() {
-        _baseWidth = w;
-        _baseHeight = h;
+        _imageWidth = width;
+        _imageHeight = height;
         _loading = false;
       });
     } catch (_) {
@@ -1336,82 +1336,100 @@ class _DpCropScreenState extends State<DpCropScreen> {
   }
 
 
-  double get _coverScale {
-    if (_viewportSide <= 0 || _baseWidth <= 0 || _baseHeight <= 0) return 1;
-    return _viewportSide / (_baseWidth < _baseHeight ? _baseWidth : _baseHeight);
+  double get _fitScale {
+    if (_frameSide <= 0 || _imageWidth <= 0 || _imageHeight <= 0) return 1;
+    return _frameSide / (_imageWidth < _imageHeight ? _imageWidth : _imageHeight);
   }
 
 
-  Offset _clampOffset(Offset value, double zoom) {
-    if (_viewportSide <= 0 || _baseWidth <= 0 || _baseHeight <= 0) return Offset.zero;
-    final scaledW = _baseWidth * _coverScale * zoom;
-    final scaledH = _baseHeight * _coverScale * zoom;
-    final maxX = ((scaledW - _viewportSide) / 2).clamp(0.0, double.infinity);
-    final maxY = ((scaledH - _viewportSide) / 2).clamp(0.0, double.infinity);
-    return Offset(
-      value.dx.clamp(-maxX, maxX).toDouble(),
-      value.dy.clamp(-maxY, maxY).toDouble(),
-    );
+  Offset _limitPan(Offset pan, double zoom) {
+    if (_frameSide <= 0 || _imageWidth <= 0 || _imageHeight <= 0) return Offset.zero;
+    final width = _imageWidth * _fitScale * zoom;
+    final height = _imageHeight * _fitScale * zoom;
+    final maxX = ((width - _frameSide) / 2).clamp(0.0, double.infinity);
+    final maxY = ((height - _frameSide) / 2).clamp(0.0, double.infinity);
+    return Offset(pan.dx.clamp(-maxX, maxX).toDouble(), pan.dy.clamp(-maxY, maxY).toDouble());
   }
 
 
-  void _onScaleStart(ScaleStartDetails details) {
-    _startZoom = _zoom;
-    _startOffset = _offset;
-    _startFocal = details.localFocalPoint;
+  void _startGesture(ScaleStartDetails details) {
+    _gestureZoom = _zoom;
+    _gestureOffset = _offset;
+    _gestureFocal = details.localFocalPoint;
   }
 
 
-  void _onScaleUpdate(ScaleUpdateDetails details) {
-    // Pan and pinch are one combined gesture. Always calculate from the gesture
-    // start snapshot, preventing accumulated drift/jumps between update frames.
-    final nextZoom = (_startZoom * details.scale).clamp(1.0, 5.0).toDouble();
-    final ratio = nextZoom / _startZoom;
-    final center = Offset(_viewportSide / 2, _viewportSide / 2);
-    final focalDelta = details.localFocalPoint - _startFocal;
-    final imagePointFromCenter = _startFocal - center - _startOffset;
-    final zoomShift = imagePointFromCenter * (1.0 - ratio);
-    final nextOffset = _startOffset + focalDelta + zoomShift;
+  void _updateGesture(ScaleUpdateDetails details) {
+    final newZoom = (_gestureZoom * details.scale).clamp(1.0, 6.0).toDouble();
+    final scaleFromStart = newZoom / _gestureZoom;
+    final center = Offset(_frameSide / 2, _frameSide / 2);
+    // Keep the image point under the fingers fixed while pinching, while allowing
+    // the same recognizer to handle one-finger pan without competing gestures.
+    final newOffset = details.localFocalPoint - center +
+        (center + _gestureOffset - _gestureFocal) * scaleFromStart;
     setState(() {
-      _zoom = nextZoom;
-      _offset = _clampOffset(nextOffset, nextZoom);
+      _zoom = newZoom;
+      _offset = _limitPan(newOffset, newZoom);
     });
   }
 
 
-  void _onSliderChanged(double value) {
-    final ratio = value / _zoom;
-    final center = Offset(_viewportSide / 2, _viewportSide / 2);
-    final nextOffset = _offset * ratio;
+  void _setZoom(double value) {
+    final next = value.clamp(1.0, 6.0).toDouble();
     setState(() {
-      _zoom = value;
-      _offset = _clampOffset(nextOffset, value);
+      _zoom = next;
+      _offset = _limitPan(_offset, next);
     });
   }
 
 
-  Future<void> _confirmCrop() async {
+  void _resetCrop() {
+    setState(() {
+      _zoom = 1.0;
+      _offset = Offset.zero;
+    });
+  }
+
+
+  Future<void> _saveCrop() async {
     if (_saving) return;
     setState(() => _saving = true);
     try {
       final boundary = _cropKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) throw StateError('Crop preview is not ready');
-      final image = await boundary.toImage(pixelRatio: 2);
+      if (boundary == null) throw StateError('Crop frame is not ready');
+      final image = await boundary.toImage(pixelRatio: 3);
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
       image.dispose();
       final bytes = data?.buffer.asUint8List();
       if (bytes == null || bytes.isEmpty) throw StateError('Crop export failed');
       if (!mounted) return;
       Navigator.pop(context, bytes);
-    } catch (e) {
-      debugPrint('Crop export error: $e');
+    } catch (error) {
+      debugPrint('Crop export error: $error');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Crop failed. Please adjust and try again.')),
+        const SnackBar(content: Text('Crop failed. Please try again.')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+
+  Widget _zoomCircle({required IconData icon, required VoidCallback onTap, required String label}) {
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: Material(
+        color: const Color(0xFF222222),
+        shape: CircleBorder(side: BorderSide(color: gold, width: 1.4)),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Center(child: Icon(icon, color: gold, size: 22)),
+        ),
+      ),
+    );
   }
 
 
@@ -1424,19 +1442,12 @@ class _DpCropScreenState extends State<DpCropScreen> {
         foregroundColor: white,
         title: const Text('Crop Profile Photo', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(foregroundColor: gold, side: BorderSide(color: gold), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: _saving ? null : () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w800)),
-            ),
-          ),
+          TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: Text('Cancel', style: TextStyle(color: gold))),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(foregroundColor: gold, side: BorderSide(color: gold), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: _loading || _saving || _error != null ? null : _confirmCrop,
+              onPressed: _loading || _saving || _error != null ? null : _saveCrop,
               child: Text(_saving ? 'Saving...' : 'Done', style: const TextStyle(fontWeight: FontWeight.w900)),
             ),
           ),
@@ -1449,9 +1460,9 @@ class _DpCropScreenState extends State<DpCropScreen> {
                 ? Center(child: Text(_error!, style: const TextStyle(color: white)))
                 : LayoutBuilder(builder: (context, constraints) {
                     final side = (constraints.maxWidth - 24).clamp(220.0, 600.0).toDouble();
-                    _viewportSide = side;
-                    final imageW = _baseWidth * _coverScale * _zoom;
-                    final imageH = _baseHeight * _coverScale * _zoom;
+                    _frameSide = side;
+                    final imageW = _imageWidth * _fitScale * _zoom;
+                    final imageH = _imageHeight * _fitScale * _zoom;
                     return Column(
                       children: [
                         const SizedBox(height: 12),
@@ -1480,9 +1491,9 @@ class _DpCropScreenState extends State<DpCropScreen> {
                                               ),
                                             ),
                                             GestureDetector(
-                                              behavior: HitTestBehavior.translucent,
-                                              onScaleStart: _onScaleStart,
-                                              onScaleUpdate: _onScaleUpdate,
+                                              behavior: HitTestBehavior.opaque,
+                                              onScaleStart: _startGesture,
+                                              onScaleUpdate: _updateGesture,
                                               child: const SizedBox.expand(),
                                             ),
                                           ],
@@ -1490,31 +1501,42 @@ class _DpCropScreenState extends State<DpCropScreen> {
                                       ),
                                     ),
                                   ),
-                                  IgnorePointer(
-                                    child: CustomPaint(
-                                      size: Size(side, side),
-                                      painter: _CropCornersPainter(color: gold),
-                                    ),
-                                  ),
+                                  IgnorePointer(child: CustomPaint(size: Size(side, side), painter: _CropCornersPainter(color: gold))),
                                 ],
                               ),
                             ),
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+                          padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('Pinch to zoom • Drag to move  ${_zoom.toStringAsFixed(2)}×', style: const TextStyle(color: white, fontWeight: FontWeight.w800)),
-                              Slider(
-                                value: _zoom,
-                                min: 1,
-                                max: 5,
-                                activeColor: gold,
-                                inactiveColor: Colors.white24,
-                                onChanged: _onSliderChanged,
+                              Text('Drag photo • Pinch to zoom • ${_zoom.toStringAsFixed(1)}×', style: const TextStyle(color: white, fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _zoomCircle(icon: Icons.remove, label: 'Zoom out', onTap: () => _setZoom(_zoom - 0.25)),
+                                  const SizedBox(width: 12),
+                                  SizedBox(
+                                    width: 190,
+                                    child: Slider(
+                                      value: _zoom,
+                                      min: 1,
+                                      max: 6,
+                                      divisions: 20,
+                                      activeColor: gold,
+                                      inactiveColor: Colors.white24,
+                                      onChanged: _setZoom,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _zoomCircle(icon: Icons.add, label: 'Zoom in', onTap: () => _setZoom(_zoom + 0.25)),
+                                ],
                               ),
+                              const SizedBox(height: 8),
+                              TextButton.icon(onPressed: _resetCrop, icon: const Icon(Icons.refresh, color: gold), label: const Text('Reset crop', style: TextStyle(color: gold))),
                             ],
                           ),
                         ),
@@ -1532,7 +1554,7 @@ class _CropCornersPainter extends CustomPainter {
   _CropCornersPainter({required this.color});
   @override
   void paint(Canvas canvas, Size size) {
-    final p = Paint()..color = color..strokeWidth = 4..style = PaintingStyle.stroke..strokeCap = StrokeCap.square;
+    final paint = Paint()..color = color..strokeWidth = 4..style = PaintingStyle.stroke..strokeCap = StrokeCap.square;
     const length = 28.0;
     final w = size.width;
     final h = size.height;
@@ -1542,9 +1564,9 @@ class _CropCornersPainter extends CustomPainter {
       [Offset(0, h), Offset(length, h), Offset(0, h - length)],
       [Offset(w, h), Offset(w - length, h), Offset(w, h - length)],
     ];
-    for (final c in corners) {
-      canvas.drawLine(c[0], c[1], p);
-      canvas.drawLine(c[0], c[2], p);
+    for (final corner in corners) {
+      canvas.drawLine(corner[0], corner[1], paint);
+      canvas.drawLine(corner[0], corner[2], paint);
     }
   }
   @override
