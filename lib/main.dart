@@ -1355,16 +1355,15 @@ class _DpCropScreenState extends State<DpCropScreen> {
 
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    // Compute the photo position from the gesture's START state each frame.
-    // This avoids cumulative drift and keeps the point under the pinch focal
-    // point anchored while zooming; one-finger movement is handled as pan too.
+    // Calculate pan and pinch zoom from the gesture's initial state so the
+    // image point beneath the fingers stays anchored (no cumulative drift).
     final nextZoom = (_startZoom * details.scale).clamp(1.0, 5.0).toDouble();
-    final zoomRatio = nextZoom / _startZoom;
+    final ratio = nextZoom / _startZoom;
     final center = Offset(_viewportSide / 2, _viewportSide / 2);
     final focalMovement = details.localFocalPoint - _startFocal;
     final focalFromCenter = _startFocal - center - _startOffset;
-    final zoomAnchorShift = focalFromCenter * (1.0 - zoomRatio);
-    final nextOffset = _startOffset + focalMovement + zoomAnchorShift;
+    final anchorShift = focalFromCenter * (1.0 - ratio);
+    final nextOffset = _startOffset + focalMovement + anchorShift;
 
     setState(() {
       _zoom = nextZoom;
