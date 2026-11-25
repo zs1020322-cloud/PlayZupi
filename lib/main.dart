@@ -1355,15 +1355,17 @@ class _DpCropScreenState extends State<DpCropScreen> {
 
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    // Accumulate pan deltas and scale around the moving pinch focal point.
-    // Using the latest focalPointDelta against the gesture-start offset caused
-    // movement to reset/jump on every update.
+    // Compute the photo position from the gesture's START state each frame.
+    // This avoids cumulative drift and keeps the point under the pinch focal
+    // point anchored while zooming; one-finger movement is handled as pan too.
     final nextZoom = (_startZoom * details.scale).clamp(1.0, 5.0).toDouble();
-    final ratio = nextZoom / _zoom;
+    final zoomRatio = nextZoom / _startZoom;
     final center = Offset(_viewportSide / 2, _viewportSide / 2);
-    final focal = details.localFocalPoint;
-    final anchoredOffset = _offset * ratio + (focal - center) * (1.0 - ratio);
-    final nextOffset = anchoredOffset + details.focalPointDelta;
+    final focalMovement = details.localFocalPoint - _startFocal;
+    final focalFromCenter = _startFocal - center - _startOffset;
+    final zoomAnchorShift = focalFromCenter * (1.0 - zoomRatio);
+    final nextOffset = _startOffset + focalMovement + zoomAnchorShift;
+
     setState(() {
       _zoom = nextZoom;
       _offset = _clampOffset(nextOffset, nextZoom);
