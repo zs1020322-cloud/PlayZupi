@@ -22,4 +22,19 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/dp_frames/
+    - frame_01.png
+    - frame_02.png
+    - frame_03.png
+    - frame_04.png
+    - frame_05.png
+    - frame_06.png
+    - frame_07.png
+    - frame_08.png
+    - frame_09.png
+    - frame_10.png
+    - frame_11.png
+    - frame_12.png
+    - frame_13.png
+    - frame_14.png
+    - frame_15.png
+    - frame_16.png
