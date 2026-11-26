@@ -1630,7 +1630,8 @@ class DpAvatar extends StatelessWidget {
   const DpAvatar({super.key, required this.size, required this.frameIndex, this.imageBytes});
 
   static const int _artCount = 16;
-  String get _assetPath => 'assets/dp_frames/frame_${(frameIndex.abs() % _artCount) + 1}.png';
+  String get _assetPath =>
+    'frame_${((frameIndex.abs() % _artCount) + 1).toString().padLeft(2, '0')}.png';
 
   @override
   Widget build(BuildContext context) {
