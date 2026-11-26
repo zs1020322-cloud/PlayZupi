@@ -378,7 +378,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       gender = prefs.getString('profile_gender');
       country = prefs.getString('profile_country');
       dpBytes = encodedDp == null ? null : base64Decode(encodedDp);
-      savedFrame = prefs.getInt('profile_frame') ?? 0;
+      savedFrame = (prefs.getInt('profile_frame') ?? 0).clamp(0, dpFrameNames.length - 1);
     });
   }
 
@@ -615,7 +615,7 @@ void initState() {
       selectedCountry = prefs.getString('profile_country');
       selectedDate = savedDob == null ? null : DateTime.tryParse(savedDob);
       selectedDpBytes = encodedDp == null ? null : base64Decode(encodedDp);
-      selectedFrame = prefs.getInt('profile_frame') ?? 0;
+      selectedFrame = (prefs.getInt('profile_frame') ?? 0).clamp(0, dpFrameNames.length - 1);
       lastNameChange = changedAt == null
           ? null
           : DateTime.fromMillisecondsSinceEpoch(changedAt);
@@ -1557,19 +1557,30 @@ class _DpCollectionScreenState extends State<DpCollectionScreen> {
     final raw = prefs.getString('profile_dp');
     if (!mounted) return;
     setState(() {
-      selected = prefs.getInt('profile_frame') ?? 0;
+      final savedFrame = (prefs.getInt('profile_frame') ?? 0).clamp(0, dpFrameNames.length - 1);
+      selected = widget.kind == DpCollectionKind.frames
+          ? savedFrame.clamp(0, dpFrameNames.length - 1)
+          : 0;
       previewDp = raw == null ? null : base64Decode(raw);
       loading = false;
     });
   }
   Future<void> _saveFrame() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('profile_frame', selected);
+    if (selected < 0 || selected >= names.length) return;
+    if (widget.kind == DpCollectionKind.frames) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('profile_frame', selected);
+    }
     if (!mounted) return;
+    final action = widget.kind == DpCollectionKind.frames
+        ? 'applied to your DP'
+        : widget.kind == DpCollectionKind.themes
+            ? 'selected'
+            : 'selected';
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${names[selected]} applied to your DP')),
+      SnackBar(content: Text('${names[selected]} $action')),
     );
-    Navigator.pop(context, selected);
+    Navigator.pop(context, widget.kind == DpCollectionKind.frames ? selected : null);
   }
 
   @override
@@ -1583,9 +1594,9 @@ class _DpCollectionScreenState extends State<DpCollectionScreen> {
           width: double.infinity, padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
           decoration: const BoxDecoration(color: Color(0xFFF7F4EC), border: Border(bottom: BorderSide(color: Color(0xFFE3D7BD))),),
           child: Column(children: [
-            DpAvatar(size: 116, frameIndex: selected, imageBytes: previewDp),
+            DpAvatar(size: 116, frameIndex: widget.kind == DpCollectionKind.frames ? selected : 0, imageBytes: previewDp),
             const SizedBox(height: 9),
-            Text(names[selected], style: const TextStyle(fontWeight: FontWeight.w900, color: black)),
+            Text(selected >= 0 && selected < names.length ? names[selected] : names.first, style: const TextStyle(fontWeight: FontWeight.w900, color: black)),
             const SizedBox(height: 3),
             const Text('DP fixed • Scroll frames below', style: TextStyle(fontSize: 11, color: Color(0xFF777777))),
           ]),
@@ -1599,13 +1610,13 @@ class _DpCollectionScreenState extends State<DpCollectionScreen> {
             return InkWell(onTap: () => setState(() => selected = index), borderRadius: BorderRadius.circular(15),
               child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(color: chosen ? const Color(0xFFFFF3D1) : white, borderRadius: BorderRadius.circular(15), border: Border.all(color: chosen ? gold : const Color(0xFFE1E1E1), width: chosen ? 2 : 1), boxShadow: [BoxShadow(color: black.withOpacity(0.06), blurRadius: 4, offset: const Offset(0, 2))]),
-                child: Column(children: [Expanded(child: Center(child: DpAvatar(size: 62, frameIndex: index, imageBytes: previewDp))), const SizedBox(height: 5), Text(names[index], maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(color: black, fontSize: 10, fontWeight: FontWeight.w800)), if (chosen) const Icon(Icons.check_circle, color: Color(0xFF248A46), size: 15)]),
+                child: Column(children: [Expanded(child: Center(child: DpAvatar(size: 62, frameIndex: widget.kind == DpCollectionKind.frames ? index : 0, imageBytes: previewDp))), const SizedBox(height: 5), Text(names[index], maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(color: black, fontSize: 10, fontWeight: FontWeight.w800)), if (chosen) const Icon(Icons.check_circle, color: Color(0xFF248A46), size: 15)]),
               ),
             );
           },
         )),
         SafeArea(top: false, child: Padding(padding: const EdgeInsets.fromLTRB(14, 10, 14, 12), child: SizedBox(width: double.infinity, height: 52,
-          child: ElevatedButton.icon(onPressed: _saveFrame, icon: const Icon(Icons.check, color: black), label: const Text('Save Frame', style: TextStyle(color: black, fontWeight: FontWeight.w900)), style: ElevatedButton.styleFrom(backgroundColor: gold, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))))))),
+          child: ElevatedButton.icon(onPressed: _saveFrame, icon: const Icon(Icons.check, color: black), label: Text(widget.kind == DpCollectionKind.frames ? 'Save Frame' : 'Select', style: const TextStyle(color: black, fontWeight: FontWeight.w900)), style: ElevatedButton.styleFrom(backgroundColor: gold, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))))))),
       ]),
     );
   }
@@ -1618,40 +1629,47 @@ class DpAvatar extends StatelessWidget {
   final Uint8List? imageBytes;
   const DpAvatar({super.key, required this.size, required this.frameIndex, this.imageBytes});
 
-  Color _color() {
-    const palette = [Color(0xFFFFC83D), Color(0xFFB9DDF7), Color(0xFFB78AE8), Color(0xFF52D5E8), Color(0xFFEC9BC2), Color(0xFF7BD5AA), Color(0xFFE5E5E5), Color(0xFFDA8A43)];
-    return palette[frameIndex % palette.length];
-  }
-  IconData _ornament() {
-    if (frameIndex >= 40) return frameIndex.isEven ? Icons.card_giftcard_rounded : Icons.paid_rounded;
-    if (frameIndex >= 30) return Icons.workspace_premium_rounded;
-    const icons = [Icons.auto_awesome, Icons.star, Icons.local_florist, Icons.brightness_5, Icons.diamond, Icons.flutter_dash, Icons.music_note, Icons.nightlight_round];
-    return icons[frameIndex % icons.length];
-  }
+  static const int _artCount = 16;
+  String get _assetPath => 'assets/dp_frames/frame_${(frameIndex.abs() % _artCount) + 1}.png';
 
   @override
   Widget build(BuildContext context) {
-    final c = _color();
-    final animated = frameIndex >= 10 && frameIndex < 30;
-    final crown = frameIndex >= 30 && frameIndex < 40;
-    final moneyGift = frameIndex >= 40;
-    final photoDiameter = size * .76;
-    return SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
-      // The DP itself is always circular and stays behind the frame artwork.
-      ClipOval(child: Container(width: photoDiameter, height: photoDiameter, color: const Color(0xFFF4F4F4), child: imageBytes == null ? Icon(Icons.person, size: size * .43, color: black.withOpacity(.65)) : Image.memory(imageBytes!, fit: BoxFit.cover))),
-      // Frame ring is outside the photo; it does not cover the DP center.
-      Container(width: size * .94, height: size * .94, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.withOpacity(.98), width: size * .045), boxShadow: [BoxShadow(color: c.withOpacity(animated ? .40 : .20), blurRadius: size * (animated ? .10 : .035))])),
-      Container(width: size * .86, height: size * .86, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.withOpacity(.60), width: size * .012))),
-      if (frameIndex % 2 == 0) ...[
-        Positioned(top: size * .005, child: Icon(crown ? Icons.workspace_premium : _ornament(), color: c, size: size * .17)),
-        Positioned(bottom: size * .005, child: Icon(moneyGift ? Icons.card_giftcard : Icons.auto_awesome, color: c, size: size * .14)),
-      ],
-      if (frameIndex % 3 == 0) ...[
-        Positioned(left: size * .015, child: Icon(_ornament(), color: c, size: size * .13)),
-        Positioned(right: size * .015, child: Icon(_ornament(), color: c, size: size * .13)),
-      ],
-      if (animated) Positioned.fill(child: IgnorePointer(child: _FrameShimmer(color: c))),
-    ]));
+    final safeIndex = frameIndex < 0 ? 0 : frameIndex;
+    final animated = safeIndex >= 10 && safeIndex < 30;
+    final photoDiameter = size * .62;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Portrait is clipped to a circle and sits below the transparent artwork.
+          ClipOval(
+            child: SizedBox(
+              width: photoDiameter,
+              height: photoDiameter,
+              child: imageBytes == null
+                  ? Container(
+                      color: const Color(0xFFF4F4F4),
+                      child: Icon(Icons.person, size: size * .43, color: black.withOpacity(.65)),
+                    )
+                  : Image.memory(imageBytes!, fit: BoxFit.cover),
+            ),
+          ),
+          // The 16 original transparent frame artworks are used across the existing 50-item catalog.
+          // Artwork is always contained around the DP; it does not cover the portrait center.
+          Image.asset(
+            _assetPath,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+          if (animated)
+            Positioned.fill(child: IgnorePointer(child: _FrameShimmer(color: gold))),
+        ],
+      ),
+    );
   }
 }
 
