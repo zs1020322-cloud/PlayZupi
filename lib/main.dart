@@ -338,6 +338,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? gender;
   String? country;
   Uint8List? dpBytes;
+  int savedFrame = 0;
 
   final Map<String, String> countryFlags = const {
     'United Arab Emirates': '🇦🇪',
@@ -376,6 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       gender = prefs.getString('profile_gender');
       country = prefs.getString('profile_country');
       dpBytes = encodedDp == null ? null : base64Decode(encodedDp);
+      savedFrame = prefs.getInt('profile_frame') ?? 0;
     });
   }
 
@@ -423,25 +425,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          Container(
-            width: 112,
-            height: 112,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(colors: [white, grey]),
-              border: Border.all(color: gold, width: 2.5),
-              boxShadow: [
-                BoxShadow(
-                  color: black.withOpacity(0.18),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: dpBytes == null
-                ? const Icon(Icons.person_rounded, size: 66, color: black)
-                : Image.memory(dpBytes!, fit: BoxFit.cover),
+          DpAvatar(
+            size: 112,
+            frameIndex: savedFrame,
+            imageBytes: dpBytes,
           ),
           const SizedBox(height: 13),
           Text(
@@ -558,6 +545,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Uint8List? selectedDpBytes;
   Uint8List? dpPreviewBytes;
+  int selectedFrame = 0;
 
   String originalName = '';
   DateTime? lastNameChange;
@@ -626,6 +614,7 @@ void initState() {
       selectedCountry = prefs.getString('profile_country');
       selectedDate = savedDob == null ? null : DateTime.tryParse(savedDob);
       selectedDpBytes = encodedDp == null ? null : base64Decode(encodedDp);
+      selectedFrame = prefs.getInt('profile_frame') ?? 0;
       lastNameChange = changedAt == null
           ? null
           : DateTime.fromMillisecondsSinceEpoch(changedAt);
@@ -760,6 +749,7 @@ Future<void> cropAndPreview(String path) async {
 
       await prefs.setString('profile_name', newName);
       await prefs.setString('profile_bio', newBio);
+      await prefs.setInt('profile_frame', selectedFrame);
 
       if (selectedGender == null) {
         await prefs.remove('profile_gender');
@@ -876,24 +866,10 @@ Future<void> cropAndPreview(String path) async {
                   children: [
                     Row(
                       children: [
-                        Container(
-                          width: 68,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: gold, width: 2),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: (dpPreviewBytes ?? selectedDpBytes) == null
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 40,
-                                  color: black,
-                                )
-                              : Image.memory(
-                                  dpPreviewBytes ?? selectedDpBytes!,
-                                  fit: BoxFit.cover,
-                                ),
+                        DpAvatar(
+                          size: 68,
+                          frameIndex: selectedFrame,
+                          imageBytes: dpPreviewBytes ?? selectedDpBytes,
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -1218,7 +1194,13 @@ Future<void> cropAndPreview(String path) async {
               EditProfileOption(
                 title: 'Frame',
                 icon: Icons.crop_square_rounded,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DpCollectionScreen(kind: DpCollectionKind.frames))),
+                onTap: () async {
+                  final result = await Navigator.push<int>(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DpCollectionScreen(kind: DpCollectionKind.frames)),
+                  );
+                  if (result != null && mounted) setState(() => selectedFrame = result);
+                },
               ),
 
               EditProfileOption(
@@ -1543,14 +1525,15 @@ enum DpCollectionKind { frames, themes, ornaments }
 class DpCollectionScreen extends StatefulWidget {
   final DpCollectionKind kind;
   const DpCollectionScreen({super.key, required this.kind});
-
   @override
   State<DpCollectionScreen> createState() => _DpCollectionScreenState();
 }
 
 
 class _DpCollectionScreenState extends State<DpCollectionScreen> {
-  int selected = -1;
+  int selected = 0;
+  Uint8List? previewDp;
+  bool loading = true;
 
   String get heading => switch (widget.kind) {
     DpCollectionKind.frames => 'DP Frames',
@@ -1562,112 +1545,129 @@ class _DpCollectionScreenState extends State<DpCollectionScreen> {
     DpCollectionKind.themes => dpThemeNames,
     DpCollectionKind.ornaments => dpOrnamentNames,
   };
-  final List<Color> colors = const [
-    Color(0xFFB98722), Color(0xFF7B5BD6), Color(0xFF1F91C8), Color(0xFFE15C91),
-    Color(0xFF3D9B72), Color(0xFFCC5739), Color(0xFF6074C9), Color(0xFF9A6B4C),
-  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSaved();
+  }
+  Future<void> _loadSaved() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('profile_dp');
+    if (!mounted) return;
+    setState(() {
+      selected = prefs.getInt('profile_frame') ?? 0;
+      previewDp = raw == null ? null : base64Decode(raw);
+      loading = false;
+    });
+  }
+  Future<void> _saveFrame() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('profile_frame', selected);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${names[selected]} applied to your DP')),
+    );
+    Navigator.pop(context, selected);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: white,
-      appBar: AppBar(
-        backgroundColor: white,
-        foregroundColor: black,
-        centerTitle: true,
-        title: Text(heading, style: const TextStyle(fontWeight: FontWeight.w900)),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: const Color(0xFFFFF6D9), borderRadius: BorderRadius.circular(16), border: Border.all(color: gold)),
-              child: Text('${names.length} designs • UI preview only', textAlign: TextAlign.center, style: const TextStyle(color: black, fontWeight: FontWeight.w800)),
-            ),
-          ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 18),
-              itemCount: names.length,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: widget.kind == DpCollectionKind.frames ? 4 : 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: widget.kind == DpCollectionKind.themes ? 1.0 : widget.kind == DpCollectionKind.ornaments ? 2.25 : 0.78),
-              itemBuilder: (context, index) {
-                final accent = colors[index % colors.length];
-                final isSelected = selected == index;
-                return InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => setState(() => selected = index),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(color: isSelected ? const Color(0xFFFFF4D3) : white, borderRadius: BorderRadius.circular(16), border: Border.all(color: isSelected ? gold : const Color(0xFFE0E0E0), width: isSelected ? 2 : 1), boxShadow: [BoxShadow(color: black.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2))]),
-                    child: Column(
-                      children: [
-                        Expanded(child: _catalogPreview(kind: widget.kind, index: index, accent: accent)),
-                        const SizedBox(height: 6),
-                        Text(names[index], maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(color: black, fontSize: 10.5, fontWeight: FontWeight.w800)),
-                        if (isSelected) const Padding(padding: EdgeInsets.only(top: 2), child: Icon(Icons.check_circle, size: 14, color: Color(0xFF218838))),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          if (selected >= 0)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              decoration: const BoxDecoration(color: white, border: Border(top: BorderSide(color: Color(0xFFE1E1E1)))),
-              child: Text('Selected: ${names[selected]}  •  Preview only', textAlign: TextAlign.center, style: const TextStyle(color: black, fontWeight: FontWeight.w800)),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _catalogPreview({required DpCollectionKind kind, required int index, required Color accent}) {
-    if (kind == DpCollectionKind.themes) {
-      final other = colors[(index + 3) % colors.length];
-      return Container(
-        width: double.infinity,
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), gradient: LinearGradient(colors: [accent.withOpacity(0.85), other.withOpacity(0.8), const Color(0xFF202033)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
-        child: Stack(children: [Positioned(right: -8, top: -8, child: Icon(Icons.blur_on, size: 54, color: white.withOpacity(0.18))), Center(child: Icon([Icons.nightlight_round, Icons.water, Icons.landscape, Icons.ac_unit, Icons.location_city, Icons.local_florist, Icons.auto_awesome][index % 7], color: white, size: 28))]),
-      );
-    }
-    if (kind == DpCollectionKind.ornaments) {
-      return Container(
-        width: double.infinity,
-        decoration: BoxDecoration(color: const Color(0xFFF7F7F7), borderRadius: BorderRadius.circular(12)),
-        child: Stack(alignment: Alignment.center, children: [
-          Container(width: 45, height: 45, decoration: BoxDecoration(shape: BoxShape.circle, color: white, border: Border.all(color: const Color(0xFFCCCCCC)))),
-          Positioned(left: 5, top: 7 + (index % 3) * 3, child: Icon([Icons.eco, Icons.auto_awesome, Icons.local_florist, Icons.flutter_dash, Icons.waves][index % 5], color: accent, size: 19)),
-          Positioned(right: 5, bottom: 7 + (index % 3) * 3, child: Icon([Icons.star, Icons.spa, Icons.diamond, Icons.brightness_5, Icons.park][(index + 2) % 5], color: accent.withOpacity(0.8), size: 17)),
-        ]),
-      );
-    }
-    final ringWidth = 1.5 + (index % 4) * 0.7;
-    final ringStyle = index % 3;
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(color: const Color(0xFFF8F8F8), borderRadius: BorderRadius.circular(12)),
-      child: Center(
-        child: Container(
-          width: 54,
-          height: 54,
-          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: accent, width: ringWidth, style: ringStyle == 1 ? BorderStyle.none : BorderStyle.solid), boxShadow: [BoxShadow(color: accent.withOpacity(0.28), blurRadius: 6)]),
-          child: Container(
-            margin: EdgeInsets.all(2 + (index % 4)),
-            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: colors[(index + 1) % colors.length], width: 1 + (index % 2)),
-              gradient: index % 4 == 0 ? LinearGradient(colors: [accent.withOpacity(0.25), white]) : null),
-            child: Icon(index % 5 == 0 ? Icons.star : index % 5 == 1 ? Icons.diamond : index % 5 == 2 ? Icons.auto_awesome : index % 5 == 3 ? Icons.local_florist : Icons.circle, size: 18, color: accent.withOpacity(0.8)),
-          ),
+      appBar: AppBar(backgroundColor: white, foregroundColor: black, centerTitle: true,
+        title: Text(heading, style: const TextStyle(fontWeight: FontWeight.w900))),
+      body: loading ? const Center(child: CircularProgressIndicator()) : Column(children: [
+        Container(
+          width: double.infinity, padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+          decoration: const BoxDecoration(color: Color(0xFFF7F4EC), border: Border(bottom: BorderSide(color: Color(0xFFE3D7BD))),),
+          child: Column(children: [
+            DpAvatar(size: 116, frameIndex: selected, imageBytes: previewDp),
+            const SizedBox(height: 9),
+            Text(names[selected], style: const TextStyle(fontWeight: FontWeight.w900, color: black)),
+            const SizedBox(height: 3),
+            const Text('DP fixed • Scroll frames below', style: TextStyle(fontSize: 11, color: Color(0xFF777777))),
+          ]),
         ),
-      ),
+        Expanded(child: GridView.builder(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
+          itemCount: names.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.86),
+          itemBuilder: (context, index) {
+            final chosen = selected == index;
+            return InkWell(onTap: () => setState(() => selected = index), borderRadius: BorderRadius.circular(15),
+              child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: chosen ? const Color(0xFFFFF3D1) : white, borderRadius: BorderRadius.circular(15), border: Border.all(color: chosen ? gold : const Color(0xFFE1E1E1), width: chosen ? 2 : 1), boxShadow: [BoxShadow(color: black.withOpacity(0.06), blurRadius: 4, offset: const Offset(0, 2))]),
+                child: Column(children: [Expanded(child: Center(child: DpAvatar(size: 62, frameIndex: index, imageBytes: previewDp))), const SizedBox(height: 5), Text(names[index], maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(color: black, fontSize: 10, fontWeight: FontWeight.w800)), if (chosen) const Icon(Icons.check_circle, color: Color(0xFF248A46), size: 15)]),
+              ),
+            );
+          },
+        )),
+        SafeArea(top: false, child: Padding(padding: const EdgeInsets.fromLTRB(14, 10, 14, 12), child: SizedBox(width: double.infinity, height: 52,
+          child: ElevatedButton.icon(onPressed: _saveFrame, icon: const Icon(Icons.check, color: black), label: const Text('Save Frame', style: TextStyle(color: black, fontWeight: FontWeight.w900)), style: ElevatedButton.styleFrom(backgroundColor: gold, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))))))),
+      ]),
     );
   }
+}
+
+
+class DpAvatar extends StatelessWidget {
+  final double size;
+  final int frameIndex;
+  final Uint8List? imageBytes;
+  const DpAvatar({super.key, required this.size, required this.frameIndex, this.imageBytes});
+
+  Color _color() {
+    const palette = [Color(0xFFFFC83D), Color(0xFFB9DDF7), Color(0xFFB78AE8), Color(0xFF52D5E8), Color(0xFFEC9BC2), Color(0xFF7BD5AA), Color(0xFFE5E5E5), Color(0xFFDA8A43)];
+    return palette[frameIndex % palette.length];
+  }
+  IconData _ornament() {
+    if (frameIndex >= 40) return frameIndex.isEven ? Icons.card_giftcard_rounded : Icons.paid_rounded;
+    if (frameIndex >= 30) return Icons.workspace_premium_rounded;
+    const icons = [Icons.auto_awesome, Icons.star, Icons.local_florist, Icons.brightness_5, Icons.diamond, Icons.flutter_dash, Icons.music_note, Icons.nightlight_round];
+    return icons[frameIndex % icons.length];
+  }
+  @override
+  Widget build(BuildContext context) {
+    final c = _color();
+    final animated = frameIndex >= 10 && frameIndex < 30;
+    final crown = frameIndex >= 30 && frameIndex < 40;
+    final moneyGift = frameIndex >= 40;
+    return SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
+      Container(width: size * .78, height: size * .78, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFF4F4F4), border: Border.all(color: c, width: size * .055), boxShadow: [BoxShadow(color: c.withOpacity(.38), blurRadius: size * .08)]), child: imageBytes == null ? Icon(Icons.person, size: size * .43, color: black.withOpacity(.65)) : Image.memory(imageBytes!, fit: BoxFit.cover)),
+      Container(width: size * .91, height: size * .91, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.withOpacity(.95), width: size * .035), boxShadow: [BoxShadow(color: c.withOpacity(animated ? .45 : .2), blurRadius: animated ? size * .12 : size * .035)])),
+      if (frameIndex % 2 == 0) ...[Positioned(top: size * .02, child: Icon(crown ? Icons.workspace_premium : _ornament(), color: c, size: size * .18)), Positioned(bottom: size * .02, child: Icon(moneyGift ? Icons.card_giftcard : Icons.auto_awesome, color: c, size: size * .14))],
+      if (frameIndex % 3 == 0) ...[Positioned(left: size * .08, child: Icon(_ornament(), color: c, size: size * .14)), Positioned(right: size * .08, child: Icon(_ornament(), color: c, size: size * .14))],
+      if (animated) Positioned.fill(child: IgnorePointer(child: _FrameShimmer(color: c))),
+    ]));
+  }
+}
+
+
+class _FrameShimmer extends StatefulWidget {
+  final Color color;
+  const _FrameShimmer({required this.color});
+  @override
+  State<_FrameShimmer> createState() => _FrameShimmerState();
+}
+class _FrameShimmerState extends State<_FrameShimmer> with SingleTickerProviderStateMixin {
+  late final AnimationController controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
+  @override
+  void dispose() { controller.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(animation: controller, builder: (_, __) => CustomPaint(painter: _FrameShimmerPainter(widget.color, controller.value)));
+}
+class _FrameShimmerPainter extends CustomPainter {
+  final Color color; final double progress;
+  _FrameShimmerPainter(this.color, this.progress);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(size.width * (progress - .25), 0, size.width * .25, size.height);
+    final paint = Paint()..shader = LinearGradient(colors: [Colors.transparent, color.withOpacity(.5), Colors.transparent]).createShader(rect);
+    canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width * .45, paint);
+  }
+  @override
+  bool shouldRepaint(covariant _FrameShimmerPainter oldDelegate) => oldDelegate.progress != progress || oldDelegate.color != color;
 }
 
 
