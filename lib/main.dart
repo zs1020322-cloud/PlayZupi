@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -1438,7 +1439,7 @@ class _DpCropScreenState extends State<DpCropScreen> {
                               height: side,
                               child: RepaintBoundary(
                                 key: _cropKey,
-                                child: ClipRect(
+                                child: ClipOval(
                                   child: InteractiveViewer(
                                     transformationController: _transformController,
                                     constrained: false,
@@ -1627,17 +1628,28 @@ class DpAvatar extends StatelessWidget {
     const icons = [Icons.auto_awesome, Icons.star, Icons.local_florist, Icons.brightness_5, Icons.diamond, Icons.flutter_dash, Icons.music_note, Icons.nightlight_round];
     return icons[frameIndex % icons.length];
   }
+
   @override
   Widget build(BuildContext context) {
     final c = _color();
     final animated = frameIndex >= 10 && frameIndex < 30;
     final crown = frameIndex >= 30 && frameIndex < 40;
     final moneyGift = frameIndex >= 40;
+    final photoDiameter = size * .76;
     return SizedBox(width: size, height: size, child: Stack(alignment: Alignment.center, children: [
-      Container(width: size * .78, height: size * .78, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFF4F4F4), border: Border.all(color: c, width: size * .055), boxShadow: [BoxShadow(color: c.withOpacity(.38), blurRadius: size * .08)]), child: imageBytes == null ? Icon(Icons.person, size: size * .43, color: black.withOpacity(.65)) : Image.memory(imageBytes!, fit: BoxFit.cover)),
-      Container(width: size * .91, height: size * .91, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.withOpacity(.95), width: size * .035), boxShadow: [BoxShadow(color: c.withOpacity(animated ? .45 : .2), blurRadius: animated ? size * .12 : size * .035)])),
-      if (frameIndex % 2 == 0) ...[Positioned(top: size * .02, child: Icon(crown ? Icons.workspace_premium : _ornament(), color: c, size: size * .18)), Positioned(bottom: size * .02, child: Icon(moneyGift ? Icons.card_giftcard : Icons.auto_awesome, color: c, size: size * .14))],
-      if (frameIndex % 3 == 0) ...[Positioned(left: size * .08, child: Icon(_ornament(), color: c, size: size * .14)), Positioned(right: size * .08, child: Icon(_ornament(), color: c, size: size * .14))],
+      // The DP itself is always circular and stays behind the frame artwork.
+      ClipOval(child: Container(width: photoDiameter, height: photoDiameter, color: const Color(0xFFF4F4F4), child: imageBytes == null ? Icon(Icons.person, size: size * .43, color: black.withOpacity(.65)) : Image.memory(imageBytes!, fit: BoxFit.cover))),
+      // Frame ring is outside the photo; it does not cover the DP center.
+      Container(width: size * .94, height: size * .94, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.withOpacity(.98), width: size * .045), boxShadow: [BoxShadow(color: c.withOpacity(animated ? .40 : .20), blurRadius: size * (animated ? .10 : .035))])),
+      Container(width: size * .86, height: size * .86, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.withOpacity(.60), width: size * .012))),
+      if (frameIndex % 2 == 0) ...[
+        Positioned(top: size * .005, child: Icon(crown ? Icons.workspace_premium : _ornament(), color: c, size: size * .17)),
+        Positioned(bottom: size * .005, child: Icon(moneyGift ? Icons.card_giftcard : Icons.auto_awesome, color: c, size: size * .14)),
+      ],
+      if (frameIndex % 3 == 0) ...[
+        Positioned(left: size * .015, child: Icon(_ornament(), color: c, size: size * .13)),
+        Positioned(right: size * .015, child: Icon(_ornament(), color: c, size: size * .13)),
+      ],
       if (animated) Positioned.fill(child: IgnorePointer(child: _FrameShimmer(color: c))),
     ]));
   }
@@ -1658,13 +1670,23 @@ class _FrameShimmerState extends State<_FrameShimmer> with SingleTickerProviderS
   Widget build(BuildContext context) => AnimatedBuilder(animation: controller, builder: (_, __) => CustomPaint(painter: _FrameShimmerPainter(widget.color, controller.value)));
 }
 class _FrameShimmerPainter extends CustomPainter {
-  final Color color; final double progress;
+  final Color color;
+  final double progress;
   _FrameShimmerPainter(this.color, this.progress);
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Rect.fromLTWH(size.width * (progress - .25), 0, size.width * .25, size.height);
-    final paint = Paint()..shader = LinearGradient(colors: [Colors.transparent, color.withOpacity(.5), Colors.transparent]).createShader(rect);
-    canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width * .45, paint);
+    // Shine is restricted to an outer circular stroke, not painted over the photo.
+    final radius = size.width * .465;
+    final stroke = size.width * .055;
+    final rect = Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: radius);
+    final sweep = SweepGradient(
+      startAngle: progress * math.pi * 2,
+      endAngle: progress * math.pi * 2 + math.pi * .85,
+      colors: [Colors.transparent, color.withOpacity(.10), Colors.white.withOpacity(.95), color.withOpacity(.65), Colors.transparent],
+      stops: const [0.0, .35, .55, .72, 1.0],
+    );
+    final paint = Paint()..shader = sweep.createShader(rect)..style = PaintingStyle.stroke..strokeWidth = stroke;
+    canvas.drawCircle(Offset(size.width / 2, size.height / 2), radius, paint);
   }
   @override
   bool shouldRepaint(covariant _FrameShimmerPainter oldDelegate) => oldDelegate.progress != progress || oldDelegate.color != color;
